@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCircle2, FileQuestion, Send } from 'lucide-react'
+import { FormHero } from '../forms/FormHero'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
@@ -78,16 +79,7 @@ export default function PublicForm() {
     <div className="min-h-screen px-4 py-6 sm:py-12" style={{ background: bg }}>
       <div className="mx-auto mb-4 flex max-w-5xl justify-end"><LangSwitch /></div>
       <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
-        <motion.aside
-          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          className="overflow-hidden rounded-2xl bg-white shadow-lift lg:sticky lg:top-8"
-        >
-          <div className="h-2" style={{ background: data.pipe.color }} />
-          <div className="p-6 sm:p-8">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{settings.title || data.pipe.name}</h1>
-            {settings.description && <p className="mt-3 whitespace-pre-line leading-relaxed text-slate-600">{settings.description}</p>}
-          </div>
-        </motion.aside>
+        <FormHero title={settings.title || data.pipe.name} description={settings.description} kicker={settings.logo_kicker} name={settings.logo_name} />
 
         <motion.main
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}

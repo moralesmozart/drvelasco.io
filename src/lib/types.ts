@@ -89,6 +89,9 @@ export interface FormSettings {
   brand_color?: string
   success_message?: string
   submit_label?: string
+  /** Animated wordmark on the public form: small line above (e.g. a title) + main name */
+  logo_kicker?: string
+  logo_name?: string
 }
 
 export interface PublicFormDef {

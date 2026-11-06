@@ -3,7 +3,7 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], serif: ['"Cormorant Garamond"', 'Georgia', 'serif'] },
       colors: {
         // Clinical green (buttons, focus, accents)
         brand: {

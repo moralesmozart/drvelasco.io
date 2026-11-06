@@ -430,6 +430,19 @@ function SettingsEditor({ settings, onSave }: { settings: FormSettings; onSave: 
       onSubmit={async (e) => { e.preventDefault(); setBusy(true); try { await onSave(s); toast.success(t('common.saved')) } finally { setBusy(false) } }}
     >
       <p className="flex items-center gap-2 text-sm font-medium text-slate-500"><Palette className="h-4 w-4" /> {t('builder.settings')}</p>
+      <div className="rounded-xl bg-care-50 p-3">
+        <p className="mb-3 text-xs text-care-800">{t('builder.logoHint')}</p>
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="fs-kicker">{t('builder.logoKicker')}</Label>
+            <Input id="fs-kicker" value={s.logo_kicker ?? ''} onChange={(e) => setS({ ...s, logo_kicker: e.target.value })} />
+          </div>
+          <div>
+            <Label htmlFor="fs-name">{t('builder.logoName')}</Label>
+            <Input id="fs-name" value={s.logo_name ?? ''} onChange={(e) => setS({ ...s, logo_name: e.target.value })} />
+          </div>
+        </div>
+      </div>
       <div>
         <Label htmlFor="fs-title">{t('builder.formTitle')}</Label>
         <Input id="fs-title" value={s.title ?? ''} onChange={(e) => setS({ ...s, title: e.target.value })} />

@@ -51,6 +51,9 @@ const ptBR = {
     sentTitle: 'Enviado!', sentDefault: 'Recebemos suas informações.', sendAnother: 'Enviar outra resposta',
     privacy: 'Seus dados são usados apenas para este atendimento.',
     notFound: 'Formulário não encontrado', notFoundHint: 'Verifique o link recebido.',
+    readMore: 'Ler mais', readLess: 'Ler menos',
+    step1: 'Preencha o formulário de pré-consulta', step2: 'A equipe médica avalia suas informações', step3: 'Entramos em contato com você',
+    confidential: 'Suas informações de saúde são confidenciais.',
   },
   builder: {
     title: 'Formulários', startForm: 'Formulário inicial', startFormHint: 'Público: qualquer pessoa com o link cria um card.',
@@ -64,7 +67,7 @@ const ptBR = {
     deleteField: 'Excluir campo', deleteFieldTitle: 'Excluir "{{name}}"?', deleteFieldBody: 'Respostas já salvas neste campo deixam de aparecer. Esta ação não pode ser desfeita.',
     duplicate: 'Duplicar', selectField: 'Selecione um campo para editar.',
     settings: 'Aparência do formulário', formTitle: 'Título', formDescription: 'Descrição', bgColor: 'Cor de fundo',
-    successMessage: 'Mensagem de sucesso', submitLabel: 'Texto do botão', preview: 'Abrir formulário', saving: 'Salvando…', conditional: 'Condicional',
+    logoKicker: 'Logo: texto pequeno (opcional)', logoName: 'Logo: nome', logoHint: 'Aparece como logotipo animado no topo do formulário.', successMessage: 'Mensagem de sucesso', submitLabel: 'Texto do botão', preview: 'Abrir formulário', saving: 'Salvando…', conditional: 'Condicional',
     newFieldLabel: 'Nova pergunta',
   },
   card: {
@@ -133,6 +136,9 @@ const es: Dict = {
     sentTitle: '¡Enviado!', sentDefault: 'Hemos recibido tu información.', sendAnother: 'Enviar otra respuesta',
     privacy: 'Tus datos se usan solo para esta atención.',
     notFound: 'Formulario no encontrado', notFoundHint: 'Revisa el enlace recibido.',
+    readMore: 'Leer más', readLess: 'Leer menos',
+    step1: 'Rellena el formulario de preconsulta', step2: 'El equipo médico evalúa tu información', step3: 'Nos ponemos en contacto contigo',
+    confidential: 'Tu información de salud es confidencial.',
   },
   builder: {
     title: 'Formularios', startForm: 'Formulario inicial', startFormHint: 'Público: cualquiera con el enlace crea una tarjeta.',
@@ -146,7 +152,7 @@ const es: Dict = {
     deleteField: 'Eliminar campo', deleteFieldTitle: '¿Eliminar "{{name}}"?', deleteFieldBody: 'Las respuestas guardadas en este campo dejarán de mostrarse. Esta acción no se puede deshacer.',
     duplicate: 'Duplicar', selectField: 'Selecciona un campo para editarlo.',
     settings: 'Apariencia del formulario', formTitle: 'Título', formDescription: 'Descripción', bgColor: 'Color de fondo',
-    successMessage: 'Mensaje de éxito', submitLabel: 'Texto del botón', preview: 'Abrir formulario', saving: 'Guardando…', conditional: 'Condicional',
+    logoKicker: 'Logo: texto pequeño (opcional)', logoName: 'Logo: nombre', logoHint: 'Aparece como logotipo animado arriba del formulario.', successMessage: 'Mensaje de éxito', submitLabel: 'Texto del botón', preview: 'Abrir formulario', saving: 'Guardando…', conditional: 'Condicional',
     newFieldLabel: 'Nueva pregunta',
   },
   card: {
