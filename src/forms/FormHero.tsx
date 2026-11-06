@@ -4,7 +4,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import clsx from 'clsx'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BrandMark } from './BrandMark'
 
@@ -25,16 +25,27 @@ const STEPS: Array<{ icon: LucideIcon; key: 'step1' | 'step2' | 'step3' }> = [
 export function FormHero({ title, description, kicker, name }: { title: string; description?: string; kicker?: string; name?: string }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
+  const [atEnd, setAtEnd] = useState(true)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const check = () => setAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4)
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [description])
   const paragraphs = (description ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
   const long = paragraphs.join(' ').length > 280
 
   return (
     <motion.aside
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className="overflow-hidden rounded-3xl bg-white shadow-lift lg:sticky lg:top-8"
+      className="overflow-hidden rounded-3xl bg-white shadow-lift lg:sticky lg:top-6 lg:flex lg:max-h-[calc(100vh-3rem)] lg:flex-col"
     >
       {/* brand header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#d3e6e3] via-[#c4dbd8] to-[#b8d1d3] px-6 pb-4 pt-8">
+      <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#d3e6e3] via-[#c4dbd8] to-[#b8d1d3] px-6 pb-4 pt-8">
         <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/30" />
         <div className="pointer-events-none absolute -bottom-12 -left-8 h-36 w-36 rounded-full bg-white/25" />
         {BUBBLES.map((b, i) => (
@@ -64,19 +75,22 @@ export function FormHero({ title, description, kicker, name }: { title: string; 
         </div>
       </div>
 
-      <div className="p-6 sm:p-8">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+      <div className="p-6 sm:p-8 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+        <h1 className="shrink-0 text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
 
         {paragraphs.length > 0 && (
-          <div className="mt-3">
-            <div className="relative">
+          <div className="mt-3 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+            <div className="relative lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
               <motion.div
                 initial={false}
                 animate={{ height: long && !expanded ? 132 : 'auto' }}
-                className="space-y-3 overflow-hidden text-[15px] leading-relaxed text-slate-600 lg:!h-auto"
+                onScroll={(e) => { const el = e.currentTarget; setAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4) }}
+                ref={scrollRef}
+                className="scroll-thin space-y-3 overflow-hidden text-[15px] leading-relaxed text-slate-600 lg:!h-auto lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2"
               >
                 {paragraphs.map((p, i) => <p key={i} className="whitespace-pre-line">{p}</p>)}
               </motion.div>
+              {!atEnd && <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-10 bg-gradient-to-t from-white lg:block" />}
               <AnimatePresence>
                 {long && !expanded && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white lg:hidden" />
@@ -96,7 +110,7 @@ export function FormHero({ title, description, kicker, name }: { title: string; 
           </div>
         )}
 
-        <ol className="mt-6 space-y-3 border-t border-slate-100 pt-6">
+        <ol className="mt-6 shrink-0 space-y-3 border-t border-slate-100 pt-6 lg:mt-4 lg:pt-4 lg:[@media(max-height:760px)]:hidden">
           {STEPS.map((s, i) => (
             <motion.li
               key={s.key}
@@ -116,7 +130,7 @@ export function FormHero({ title, description, kicker, name }: { title: string; 
           ))}
         </ol>
 
-        <p className="mt-6 flex items-center gap-1.5 text-xs text-slate-500">
+        <p className="mt-6 flex shrink-0 items-center gap-1.5 text-xs text-slate-500 lg:mt-4">
           <ShieldCheck className="h-4 w-4 text-care-600" /> {t('forms.confidential')}
         </p>
       </div>
