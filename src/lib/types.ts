@@ -1,0 +1,77 @@
+export type FieldType =
+  | 'short_text' | 'long_text' | 'info' | 'attachment' | 'checklist' | 'radio' | 'select'
+  | 'date' | 'email' | 'phone' | 'number' | 'currency'
+
+export interface Pipe {
+  id: string
+  name: string
+  icon: string
+  color: string
+  form_slug: string
+  form_settings: Record<string, unknown>
+  created_at: string
+}
+
+export interface PipeSummary extends Pipe {
+  card_count: number
+}
+
+export interface Phase {
+  id: string
+  pipe_id: string
+  name: string
+  color: string
+  description: string | null
+  position: number
+  is_final: boolean
+}
+
+export interface FieldCondition {
+  field_id: string
+  op: 'equals' | 'contains' | 'filled'
+  value?: string
+}
+
+export interface Field {
+  id: string
+  pipe_id: string
+  phase_id: string | null
+  type: FieldType
+  label: string
+  description: string | null
+  required: boolean
+  options: string[]
+  conditions: FieldCondition[]
+  show_on_card: boolean
+  position: number
+}
+
+export type FieldValue = string | number | string[] | null
+
+export interface Card {
+  id: string
+  pipe_id: string
+  phase_id: string
+  title: string
+  values: Record<string, FieldValue>
+  position: number
+  created_via: 'internal' | 'public_form' | 'import'
+  phase_entered_at: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Transition {
+  from_phase_id: string
+  to_phase_id: string
+}
+
+export interface Board {
+  pipe: Pipe
+  phases: Phase[]
+  fields: Field[]
+  cards: Card[]
+  transitions: Transition[]
+}
+
+export type PhaseInput = Pick<Phase, 'name' | 'color' | 'description' | 'is_final'>
