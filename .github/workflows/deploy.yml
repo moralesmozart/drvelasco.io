@@ -31,6 +31,10 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
+          # Link preview (optional): title + description; image comes from the public "share" bucket
+          VITE_SHARE_TITLE: ${{ vars.VITE_SHARE_TITLE }}
+          VITE_SHARE_DESCRIPTION: ${{ vars.VITE_SHARE_DESCRIPTION }}
+          VITE_SHARE_IMAGE: ${{ vars.VITE_SHARE_IMAGE }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
