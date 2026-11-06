@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 .env.local
 supabase/private/
+
+# Local downloads
+Claude outputs/
+*.bundle
