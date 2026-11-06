@@ -8,15 +8,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Header, PipeIcon } from '../components/Layout'
 import { exportIcons, exportProject, ImportProjectButton } from '../components/ProjectTransfer'
+import { HomeSummary } from '../components/HomeSummary'
 import { Button, ColorPicker, ConfirmDialog, IconButton, Input, Label, Menu, Modal, Spinner } from '../components/ui'
-import { useAuth } from '../lib/auth'
 import { PIPE_ICONS } from '../lib/defaults'
 import { repo } from '../lib/repo'
 import type { PipeSummary } from '../lib/types'
 
 export default function Home() {
   const { t } = useTranslation()
-  const { user } = useAuth()
   const qc = useQueryClient()
   const nav = useNavigate()
   const { data: pipes, isLoading } = useQuery({ queryKey: ['pipes'], queryFn: () => repo.listPipes() })
@@ -27,10 +26,10 @@ export default function Home() {
     <div className="min-h-screen">
       <Header />
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+        {pipes && pipes.length > 0 && <div className="mb-10"><HomeSummary pipes={pipes} /></div>}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{t('home.greeting', { name: user?.name })}</h1>
-            <p className="mt-1 text-slate-500">{t('home.subtitle')}</p>
+            <h2 className="text-lg font-semibold tracking-tight">{t('home.subtitle')}</h2>
           </div>
           <ImportProjectButton existingNames={(pipes ?? []).map((p) => p.name)} />
         </div>

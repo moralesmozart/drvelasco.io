@@ -95,6 +95,8 @@ export interface FormSettings {
   logo_kicker?: string
   logo_name?: string
   es?: { title?: string; description?: string; success_message?: string; submit_label?: string }
+  /** Home page highlights: upcoming dates of a date field, for cards in some phases */
+  dashboard?: { date_field_id?: string; phase_ids?: string[]; days?: number }
 }
 
 export interface PublicFormDef {

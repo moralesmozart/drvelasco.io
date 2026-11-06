@@ -12,11 +12,16 @@ interface AuthState {
   loading: boolean
   signIn(email: string, password: string): Promise<'ok' | 'invalid' | 'not_admin'>
   enterDemo(): void
+  updateName(name: string): Promise<void>
   signOut(): Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
-const DEMO_USER: AuthUser = { id: 'demo', email: 'demo@example.com', name: 'Demo' }
+const demoUser = (): AuthUser => {
+  let name = 'Demo'
+  try { name = localStorage.getItem('demo-name') || 'Demo' } catch { /* ignore */ }
+  return { id: 'demo', email: 'demo@example.com', name }
+}
 
 function nameFromEmail(email: string) {
   const base = email.split('@')[0].replace(/[._-]+/g, ' ')
@@ -34,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      try { if (sessionStorage.getItem('demo-session')) setUser(DEMO_USER) } catch { /* ignore */ }
+      try { if (sessionStorage.getItem('demo-session')) setUser(demoUser()) } catch { /* ignore */ }
       setLoading(false)
       return
     }
@@ -67,7 +72,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     enterDemo() {
       try { sessionStorage.setItem('demo-session', '1') } catch { /* ignore */ }
-      setUser(DEMO_USER)
+      setUser(demoUser())
+    },
+    async updateName(name) {
+      const clean = name.trim()
+      if (!clean || !user) return
+      if (supabase) {
+        const { error } = await supabase.auth.updateUser({ data: { name: clean } })
+        if (error) throw error
+      } else {
+        try { localStorage.setItem('demo-name', clean) } catch { /* ignore */ }
+      }
+      setUser({ ...user, name: clean })
     },
     async signOut() {
       if (supabase) await supabase.auth.signOut()
