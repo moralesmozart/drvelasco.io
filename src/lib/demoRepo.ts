@@ -1,5 +1,5 @@
 import type { Repo } from './repo'
-import type { Board, Card, CardEvent, Field, Phase, Pipe, PublicFormDef, Transition } from './types'
+import type { Board, Card, CardEvent, Field, PdfTemplate, Phase, Pipe, PublicFormDef, Transition } from './types'
 import { DEFAULT_PHASES } from './defaults'
 
 /**
@@ -13,9 +13,10 @@ interface DemoDB {
   cards: Card[]
   transitions: Transition[]
   events?: CardEvent[]
+  templates?: PdfTemplate[]
 }
 
-const KEY = 'drvelasco-demo-v4'
+const KEY = 'drvelasco-demo-v5'
 const uid = () => crypto.randomUUID()
 const now = () => new Date().toISOString()
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString()
@@ -104,7 +105,32 @@ function seed(): DemoDB {
       ? [{ id: uid(), card_id: c.id, type: 'moved' as const, payload: { from: phases[0].id, to: c.phase_id }, created_at: c.phase_entered_at }]
       : []),
   ])
-  return { pipes: [pipe], phases, fields, cards, transitions, events }
+  const chip = (key: string, label: string) => ({ type: 'fieldChip', attrs: { key, label } })
+  const txt = (text: string, marks?: unknown[]) => ({ type: 'text', text, ...(marks ? { marks } : {}) })
+  const templates: PdfTemplate[] = [{
+    id: uid(), pipe_id: pipe.id, name: 'Declaração (exemplo)', updated_at: now(),
+    page: { lang: 'pt-BR', margin: 20 },
+    content: {
+      type: 'doc',
+      content: [
+        { type: 'heading', attrs: { level: 1, textAlign: 'center' }, content: [txt('DECLARAÇÃO')] },
+        { type: 'horizontalRule' },
+        { type: 'paragraph' },
+        { type: 'paragraph', attrs: { textAlign: 'justify' }, content: [
+          txt('Declaramos para os devidos fins que '), { ...chip(name.id, name.label), marks: [{ type: 'bold' }] },
+          txt(', portador(a) do documento nº '), { ...chip(doc.id, doc.label), marks: [{ type: 'bold' }] },
+          txt(', realizou sua solicitação nesta data, com previsão para '), chip(due.id, due.label), txt('.'),
+        ] },
+        { type: 'paragraph', attrs: { textAlign: 'justify' }, content: [txt('Esta declaração é válida até '), chip('sys:valid_90', 'Válido até (+90 dias)'), txt('.')] },
+        { type: 'paragraph' },
+        { type: 'paragraph', attrs: { textAlign: 'right' }, content: [txt('Emitido em '), chip('sys:today_long', 'Data de hoje (por extenso)')] },
+        { type: 'paragraph' }, { type: 'paragraph' },
+        { type: 'paragraph', attrs: { textAlign: 'center' }, content: [txt('______________________________________')] },
+        { type: 'paragraph', attrs: { textAlign: 'center' }, content: [txt('Assinatura e carimbo', [{ type: 'italic' }])] },
+      ],
+    },
+  }]
+  return { pipes: [pipe], phases, fields, cards, transitions, events, templates }
 }
 
 let db: DemoDB = load()
@@ -276,6 +302,23 @@ export const demoRepo: Repo = {
   },
   async reorderFields(orderedIds) {
     db.fields = db.fields.map((f) => (orderedIds.includes(f.id) ? { ...f, position: orderedIds.indexOf(f.id) } : f))
+    save()
+  },
+  async listTemplates(pipeId) {
+    return delay((db.templates ?? []).filter((t) => t.pipe_id === pipeId))
+  },
+  async createTemplate(pipeId, input) {
+    const tpl: PdfTemplate = { ...input, id: uid(), pipe_id: pipeId, updated_at: now() }
+    ;(db.templates ??= []).push(tpl)
+    save()
+    return delay(tpl)
+  },
+  async updateTemplate(id, patch) {
+    db.templates = (db.templates ?? []).map((t) => (t.id === id ? { ...t, ...patch, updated_at: now() } : t))
+    save()
+  },
+  async deleteTemplate(id) {
+    db.templates = (db.templates ?? []).filter((t) => t.id !== id)
     save()
   },
   async getPublicForm(slug) {

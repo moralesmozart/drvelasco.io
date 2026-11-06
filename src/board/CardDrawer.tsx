@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  AlertCircle, ArrowRight, Check, ChevronDown, Clock, Globe, History, Loader2, MoveRight, PenLine, Plus, Trash2, UserRound, X,
+  AlertCircle, ArrowRight, Check, ChevronDown, Clock, Download, FileText, Globe, History, Loader2, MoveRight, PenLine, Plus, Trash2, UserRound, X,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -13,8 +13,9 @@ import { isVisible } from '../forms/logic'
 import { formatValue, timeSince } from '../lib/format'
 import { repo } from '../lib/repo'
 import { fieldText, phaseLabel } from '../lib/localize'
-import type { AttachmentValue, Board, Card, CardEvent, Field, FieldValue, Phase } from '../lib/types'
+import type { AttachmentValue, Board, Card, CardEvent, Field, FieldValue, PdfTemplate, Phase } from '../lib/types'
 import { allowedTargets, missingRequired } from './rules'
+import { PdfPreview } from '../pdf/PdfPreview'
 
 interface Props {
   board: Board
@@ -43,6 +44,8 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
   const otherPhases = board.phases.filter((p) => p.id !== phase.id && fieldsOf(p.id).length > 0)
 
   const events = useQuery({ queryKey: ['events', card.id], queryFn: () => repo.getCardEvents(card.id) })
+  const templates = useQuery({ queryKey: ['templates', card.pipe_id], queryFn: () => repo.listTemplates(card.pipe_id) })
+  const [pdfTpl, setPdfTpl] = useState<PdfTemplate | null>(null)
 
   // Card switched or moved from outside: reset local copy
   useEffect(() => { setValues(card.values); setTitle(card.title) }, [card.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -209,6 +212,22 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
             )}
           </AnimatePresence>
 
+          <h3 className="mb-3 mt-8 flex items-center gap-2 text-sm font-semibold text-slate-900"><FileText className="h-4 w-4" /> {t('pdf.documents')}</h3>
+          <div className="space-y-2">
+            {(templates.data ?? []).map((tpl) => (
+              <button
+                key={tpl.id}
+                onClick={async () => { await flush(); setPdfTpl(tpl) }}
+                className="group flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:border-brand-300 hover:shadow-md"
+              >
+                <FileText className="h-4 w-4 shrink-0 text-brand-600" />
+                <span className="flex-1 truncate">{tpl.name}</span>
+                <Download className="h-4 w-4 text-slate-400 transition group-hover:text-brand-600" />
+              </button>
+            ))}
+            {templates.data && templates.data.length === 0 && <p className="text-xs text-slate-400">{t('pdf.noTemplates')}</p>}
+          </div>
+
           <div className="mt-8 space-y-1 border-t border-slate-200 pt-4 text-xs text-slate-500">
             <p>{t('card.created')}: {new Date(card.created_at).toLocaleString(i18n.language)}</p>
             <p>{t('card.updated')}: {new Date(card.updated_at).toLocaleString(i18n.language)}</p>
@@ -219,6 +238,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
         </aside>
       </div>
 
+      <PdfPreview template={pdfTpl} card={pdfTpl ? { ...card, title, values } : null} fields={board.fields} onClose={() => setPdfTpl(null)} />
       <ConfirmDialog
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}

@@ -1,5 +1,5 @@
 import type {
-  AttachmentValue, Board, Card, CardEvent, Field, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef,
+  AttachmentValue, Board, Card, CardEvent, Field, PdfTemplate, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef,
 } from './types'
 import { supabase, isSupabaseConfigured } from './supabase'
 import { demoRepo } from './demoRepo'
@@ -34,6 +34,11 @@ export interface Repo {
   updateField(id: string, patch: Partial<FieldInput>): Promise<void>
   deleteField(id: string): Promise<void>
   reorderFields(orderedIds: string[]): Promise<void>
+
+  listTemplates(pipeId: string): Promise<PdfTemplate[]>
+  createTemplate(pipeId: string, input: Pick<PdfTemplate, 'name' | 'content' | 'page'>): Promise<PdfTemplate>
+  updateTemplate(id: string, patch: Partial<Pick<PdfTemplate, 'name' | 'content' | 'page'>>): Promise<void>
+  deleteTemplate(id: string): Promise<void>
 
   /** Public (no login) */
   getPublicForm(slug: string): Promise<PublicFormDef | null>
@@ -158,6 +163,19 @@ const supabaseRepo: Repo = {
   async getFileUrl(path) {
     const { data } = await supabase!.storage.from('attachments').createSignedUrl(path, 300)
     return data?.signedUrl ?? null
+  },
+
+  async listTemplates(pipeId) {
+    return check(await supabase!.from('pdf_templates').select('*').eq('pipe_id', pipeId).order('created_at')) as PdfTemplate[]
+  },
+  async createTemplate(pipeId, input) {
+    return check(await supabase!.from('pdf_templates').insert({ ...input, pipe_id: pipeId }).select().single()) as PdfTemplate
+  },
+  async updateTemplate(id, patch) {
+    check(await supabase!.from('pdf_templates').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id))
+  },
+  async deleteTemplate(id) {
+    check(await supabase!.from('pdf_templates').delete().eq('id', id))
   },
 
   async updateFormSettings(pipeId, settings) {

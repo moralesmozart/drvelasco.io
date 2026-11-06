@@ -4,7 +4,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, LayoutList, Link2, Plus, Search, X } from 'lucide-react'
+import { ChevronLeft, FileText, LayoutList, Link2, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
@@ -228,6 +228,9 @@ export default function Board() {
           )}
         </div>
         <div className="ml-auto flex gap-2">
+          <Link to={`/pipe/${pipeId}/templates`}>
+            <Button variant="secondary" size="sm"><FileText className="h-4 w-4" /> {t('pdf.title')}</Button>
+          </Link>
           <Link to={`/pipe/${pipeId}/form`}>
             <Button variant="secondary" size="sm"><LayoutList className="h-4 w-4" /> {t('board.forms')}</Button>
           </Link>

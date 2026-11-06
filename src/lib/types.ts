@@ -111,3 +111,17 @@ export interface CardEvent {
   payload: Record<string, unknown>
   created_at: string
 }
+
+export interface PdfPageSettings {
+  lang: 'pt-BR' | 'es'
+  margin: number // mm
+}
+
+export interface PdfTemplate {
+  id: string
+  pipe_id: string
+  name: string
+  content: Record<string, unknown> // TipTap JSON
+  page: PdfPageSettings
+  updated_at: string
+}

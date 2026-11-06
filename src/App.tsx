@@ -6,6 +6,8 @@ import { Spinner } from './components/ui'
 import { AuthProvider, useAuth } from './lib/auth'
 import Board from './pages/Board'
 import FormBuilder from './pages/FormBuilder'
+import { lazy, Suspense } from 'react'
+const Templates = lazy(() => import('./pages/Templates'))
 import Home from './pages/Home'
 import Login from './pages/Login'
 import PublicForm from './pages/PublicForm'
@@ -30,6 +32,7 @@ export default function App() {
             <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
             <Route path="/pipe/:pipeId" element={<RequireAuth><Board /></RequireAuth>} />
             <Route path="/pipe/:pipeId/form" element={<RequireAuth><FormBuilder /></RequireAuth>} />
+            <Route path="/pipe/:pipeId/templates" element={<RequireAuth><Suspense fallback={<div className="grid min-h-screen place-items-center"><Spinner /></div>}><Templates /></Suspense></RequireAuth>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>
