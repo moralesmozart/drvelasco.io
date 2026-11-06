@@ -35,6 +35,10 @@ export interface Repo {
   deleteField(id: string): Promise<void>
   reorderFields(orderedIds: string[]): Promise<void>
 
+  /** All history events of a pipe (for reports). */
+  listPipeEvents(pipeId: string): Promise<CardEvent[]>
+  /** Bulk insert (import). Returns how many were created. */
+  importCards(pipeId: string, cards: Array<Pick<Card, 'phase_id' | 'title' | 'values'> & { created_at?: string }>): Promise<number>
   listTemplates(pipeId: string): Promise<PdfTemplate[]>
   createTemplate(pipeId: string, input: Pick<PdfTemplate, 'name' | 'content' | 'page'>): Promise<PdfTemplate>
   updateTemplate(id: string, patch: Partial<Pick<PdfTemplate, 'name' | 'content' | 'page'>>): Promise<void>
@@ -43,7 +47,10 @@ export interface Repo {
   /** Public (no login) */
   getPublicForm(slug: string): Promise<PublicFormDef | null>
   uploadPublicFile(slug: string, file: File): Promise<AttachmentValue>
-  submitPublicForm(slug: string, values: Record<string, FieldValue>, honeypot: string): Promise<void>
+  submitPublicForm(slug: string, values: Record<string, FieldValue>, honeypot: string, captchaToken?: string): Promise<void>
+
+  /** Called when a card arrives from the public form (any pipe). Returns unsubscribe. */
+  onNewCard(cb: (card: Card) => void): () => void
 
   /** Calls back whenever cards/phases of the pipe change elsewhere. Returns unsubscribe. */
   subscribe(pipeId: string, onChange: () => void): () => void
@@ -165,6 +172,25 @@ const supabaseRepo: Repo = {
     return data?.signedUrl ?? null
   },
 
+  async listPipeEvents(pipeId) {
+    const rows = check(
+      await supabase!.from('card_events').select('*, cards!inner(pipe_id)').eq('cards.pipe_id', pipeId).order('created_at').limit(10000),
+    ) as Array<CardEvent & { cards?: unknown }>
+    return rows.map(({ cards: _c, ...e }) => { void _c; return e })
+  },
+  async importCards(pipeId, cards) {
+    let n = 0
+    for (let i = 0; i < cards.length; i += 200) {
+      const chunk = cards.slice(i, i + 200).map((c, j) => ({
+        pipe_id: pipeId, phase_id: c.phase_id, title: c.title, values: c.values, created_via: 'import',
+        position: (i + j + 1) * 1000,
+        ...(c.created_at ? { created_at: c.created_at, phase_entered_at: c.created_at } : {}),
+      }))
+      check(await supabase!.from('cards').insert(chunk))
+      n += chunk.length
+    }
+    return n
+  },
   async listTemplates(pipeId) {
     return check(await supabase!.from('pdf_templates').select('*').eq('pipe_id', pipeId).order('created_at')) as PdfTemplate[]
   },
@@ -207,8 +233,23 @@ const supabaseRepo: Repo = {
     if (error) throw error
     return { path, name: file.name, size: file.size, mime: file.type }
   },
-  async submitPublicForm(slug, values, honeypot) {
+  async submitPublicForm(slug, values, honeypot, captchaToken) {
+    if (captchaToken) {
+      const { error } = await supabase!.functions.invoke('submit-form', { body: { slug, values, hp: honeypot, token: captchaToken } })
+      if (error) throw error
+      return
+    }
     check(await supabase!.rpc('submit_public_form', { p_slug: slug, p_values: values, p_hp: honeypot }))
+  },
+  onNewCard(cb) {
+    const channel = supabase!
+      .channel('new-cards')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cards' }, (p) => {
+        const card = p.new as Card
+        if (card.created_via === 'public_form') cb(card)
+      })
+      .subscribe()
+    return () => { supabase!.removeChannel(channel) }
   },
 
   subscribe(pipeId, onChange) {

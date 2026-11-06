@@ -3,11 +3,14 @@ import type { ReactNode } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { Spinner } from './components/ui'
+import { NewCardAlerts } from './components/NewCardAlerts'
 import { AuthProvider, useAuth } from './lib/auth'
 import Board from './pages/Board'
 import FormBuilder from './pages/FormBuilder'
 import { lazy, Suspense } from 'react'
 const Templates = lazy(() => import('./pages/Templates'))
+const Reports = lazy(() => import('./pages/Reports'))
+const Importer = lazy(() => import('./pages/Importer'))
 import Home from './pages/Home'
 import Login from './pages/Login'
 import PublicForm from './pages/PublicForm'
@@ -26,12 +29,15 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <HashRouter>
+          <NewCardAlerts />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/f/:slug" element={<PublicForm />} />
             <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
             <Route path="/pipe/:pipeId" element={<RequireAuth><Board /></RequireAuth>} />
             <Route path="/pipe/:pipeId/form" element={<RequireAuth><FormBuilder /></RequireAuth>} />
+            <Route path="/pipe/:pipeId/reports" element={<RequireAuth><Suspense fallback={<div className="grid min-h-screen place-items-center"><Spinner /></div>}><Reports /></Suspense></RequireAuth>} />
+            <Route path="/pipe/:pipeId/import" element={<RequireAuth><Suspense fallback={<div className="grid min-h-screen place-items-center"><Spinner /></div>}><Importer /></Suspense></RequireAuth>} />
             <Route path="/pipe/:pipeId/templates" element={<RequireAuth><Suspense fallback={<div className="grid min-h-screen place-items-center"><Spinner /></div>}><Templates /></Suspense></RequireAuth>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

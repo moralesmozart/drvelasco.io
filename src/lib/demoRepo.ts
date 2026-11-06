@@ -137,8 +137,13 @@ let db: DemoDB = load()
 const listeners = new Set<() => void>()
 
 // Another tab (e.g. the public form) changed the demo data: reload it everywhere.
+const newCardListeners = new Set<(c: Card) => void>()
 window.addEventListener('storage', (e) => {
-  if (e.key === KEY) { db = load(); listeners.forEach((l) => l()) }
+  if (e.key !== KEY) return
+  const before = new Set(db.cards.map((c) => c.id))
+  db = load()
+  listeners.forEach((l) => l())
+  db.cards.filter((c) => !before.has(c.id) && c.created_via === 'public_form').forEach((c) => newCardListeners.forEach((l) => l(c)))
 })
 
 function load(): DemoDB {
@@ -304,6 +309,23 @@ export const demoRepo: Repo = {
     db.fields = db.fields.map((f) => (orderedIds.includes(f.id) ? { ...f, position: orderedIds.indexOf(f.id) } : f))
     save()
   },
+  async listPipeEvents(pipeId) {
+    const ids = new Set(db.cards.filter((c) => c.pipe_id === pipeId).map((c) => c.id))
+    return delay((db.events ?? []).filter((e) => ids.has(e.card_id)).sort((a, b) => a.created_at.localeCompare(b.created_at)))
+  },
+  async importCards(pipeId, cards) {
+    cards.forEach((c, i) => {
+      const at = c.created_at ?? now()
+      const card: Card = {
+        id: uid(), pipe_id: pipeId, phase_id: c.phase_id, title: c.title, values: c.values, position: (i + 1) * 1000,
+        created_via: 'import', phase_entered_at: at, created_at: at, updated_at: at,
+      }
+      db.cards.push(card)
+      logEvent(card.id, 'created', { phase_id: c.phase_id, via: 'import' })
+    })
+    save()
+    return delay(cards.length)
+  },
   async listTemplates(pipeId) {
     return delay((db.templates ?? []).filter((t) => t.pipe_id === pipeId))
   },
@@ -351,6 +373,10 @@ export const demoRepo: Repo = {
     })
     logEvent(db.cards[db.cards.length - 1].id, 'created', { phase_id: first.id, via: 'public_form' })
     save()
+  },
+  onNewCard(cb) {
+    newCardListeners.add(cb)
+    return () => { newCardListeners.delete(cb) }
   },
   subscribe(_pipeId, onChange) {
     listeners.add(onChange)

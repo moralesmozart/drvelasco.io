@@ -9,6 +9,10 @@ import { LangSwitch } from '../components/Layout'
 import { Button, Spinner } from '../components/ui'
 import { FieldInput } from '../forms/FieldInput'
 import { isVisible, validate, visibleValues } from '../forms/logic'
+import { Turnstile } from '../forms/Turnstile'
+import { isDemo } from '../lib/repo'
+
+const TURNSTILE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined
 import { repo } from '../lib/repo'
 import { formText } from '../lib/localize'
 import type { FieldValue } from '../lib/types'
@@ -21,6 +25,10 @@ export default function PublicForm() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState(false)
   const [hp, setHp] = useState('')
+  const useCaptcha = !!TURNSTILE_KEY && !isDemo
+  const [captcha, setCaptcha] = useState<string | null>(null)
+  const [captchaReset, setCaptchaReset] = useState(0)
+  const [captchaMissing, setCaptchaMissing] = useState(false)
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
   const fields = useMemo(() => data?.fields ?? [], [data])
@@ -50,13 +58,15 @@ export default function PublicForm() {
       document.getElementById(`f-${first.id}`)?.closest('[data-field]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
+    if (useCaptcha && !captcha) { setCaptchaMissing(true); return }
     setState('sending')
     try {
-      await repo.submitPublicForm(slug, visibleValues(fields, values), hp)
+      await repo.submitPublicForm(slug, visibleValues(fields, values), hp, useCaptcha ? captcha ?? undefined : undefined)
       setState('sent')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
       setState('error')
+      if (useCaptcha) setCaptchaReset((n) => n + 1)
     }
   }
 
@@ -131,6 +141,8 @@ export default function PublicForm() {
                   {touched && errorCount > 0 && (
                     <p role="alert" className="text-sm text-rose-600">{t('forms.fixErrors', { count: errorCount })}</p>
                   )}
+                  {useCaptcha && <Turnstile siteKey={TURNSTILE_KEY!} lang={i18n.language} onToken={(tk) => { setCaptcha(tk); if (tk) setCaptchaMissing(false) }} resetKey={captchaReset} />}
+                  {captchaMissing && <p role="alert" className="text-sm text-rose-600">{t('forms.captcha')}</p>}
                   {state === 'error' && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{t('forms.sendFailed')}</p>}
                   <Button type="submit" loading={state === 'sending'} className="h-12 w-full text-base sm:w-auto sm:px-8">
                     <Send className="h-4 w-4" /> {settings.submit_label || t('forms.submit')}

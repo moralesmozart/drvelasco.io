@@ -1,4 +1,4 @@
-import { Briefcase, ClipboardList, FileCheck, HeartPulse, Inbox, LogOut, Plane, RotateCcw, Stethoscope, Users, type LucideIcon } from 'lucide-react'
+import { Bell, BellRing, Briefcase, ClipboardList, FileCheck, HeartPulse, Inbox, LogOut, Plane, RotateCcw, Stethoscope, Users, type LucideIcon } from 'lucide-react'
 import clsx from 'clsx'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +8,7 @@ import { LANGS } from '../lib/i18n'
 import { isDemo } from '../lib/repo'
 import { resetDemo } from '../lib/demoRepo'
 import { IconButton } from './ui'
+import { useState } from 'react'
 
 const ICONS: Record<string, LucideIcon> = {
   stethoscope: Stethoscope, clipboard: ClipboardList, 'heart-pulse': HeartPulse, 'file-check': FileCheck,
@@ -72,6 +73,7 @@ export function Header({ left }: { left?: ReactNode }) {
         {left ?? <Logo />}
         <div className="ml-auto flex items-center gap-2">
           <LangSwitch />
+          {user && <NotifyBell />}
           {user && (
             <>
               <span className="hidden h-8 w-8 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-800 sm:grid" title={user.email}>
@@ -85,5 +87,21 @@ export function Header({ left }: { left?: ReactNode }) {
         </div>
       </header>
     </>
+  )
+}
+
+function NotifyBell() {
+  const { t } = useTranslation()
+  const supported = typeof window !== 'undefined' && 'Notification' in window
+  const [perm, setPerm] = useState(supported ? Notification.permission : 'denied')
+  if (!supported || perm === 'denied') return null
+  return (
+    <IconButton
+      label={perm === 'granted' ? t('alerts.enabled') : t('alerts.enable')}
+      onClick={() => { if (perm !== 'granted') void Notification.requestPermission().then(setPerm) }}
+      className={perm === 'granted' ? 'text-brand-600' : ''}
+    >
+      {perm === 'granted' ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+    </IconButton>
   )
 }

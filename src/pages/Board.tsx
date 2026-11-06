@@ -4,17 +4,17 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, FileText, LayoutList, Link2, Plus, Search, X } from 'lucide-react'
+import { BarChart3, ChevronLeft, FileText, LayoutList, Link2, MoreHorizontal, Plus, Search, Upload, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { CardContent } from '../board/CardTile'
 import { DeletePhaseDialog, PhaseDialog } from '../board/PhaseDialogs'
 import { PhaseColumn } from '../board/PhaseColumn'
 import { allowedTargets, canMove, groupByPhase, missingRequired, positionAt } from '../board/rules'
 import { Header, PipeIcon } from '../components/Layout'
-import { Button, Input, Label, Modal, Spinner } from '../components/ui'
+import { Button, Input, Label, Menu, Modal, Spinner } from '../components/ui'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CardDrawer } from '../board/CardDrawer'
 import { repo } from '../lib/repo'
@@ -27,6 +27,7 @@ const stripPhase = (id: string) => id.slice(6)
 export default function Board() {
   const { pipeId = '' } = useParams()
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({ queryKey: ['board', pipeId], queryFn: () => repo.getBoard(pipeId), staleTime: 0 })
 
@@ -227,20 +228,23 @@ export default function Board() {
             </button>
           )}
         </div>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Link to={`/pipe/${pipeId}/reports`}>
+            <Button variant="secondary" size="sm"><BarChart3 className="h-4 w-4" /> <span className="hidden sm:inline">{t('board.reports')}</span></Button>
+          </Link>
           <Link to={`/pipe/${pipeId}/templates`}>
-            <Button variant="secondary" size="sm"><FileText className="h-4 w-4" /> {t('pdf.title')}</Button>
+            <Button variant="secondary" size="sm"><FileText className="h-4 w-4" /> <span className="hidden sm:inline">{t('pdf.title')}</span></Button>
           </Link>
           <Link to={`/pipe/${pipeId}/form`}>
-            <Button variant="secondary" size="sm"><LayoutList className="h-4 w-4" /> {t('board.forms')}</Button>
+            <Button variant="secondary" size="sm"><LayoutList className="h-4 w-4" /> <span className="hidden sm:inline">{t('board.forms')}</span></Button>
           </Link>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => navigator.clipboard.writeText(formUrl).then(() => toast.success(t('board.linkCopied')))}
-          >
-            <Link2 className="h-4 w-4" /> {t('board.publicForm')}
-          </Button>
+          <Menu
+            trigger={(open) => <Button variant="secondary" size="sm" onClick={open} aria-label="Menu"><MoreHorizontal className="h-4 w-4" /></Button>}
+            items={[
+              { label: t('board.publicForm') + ' · ' + t('board.copyLink'), icon: <Link2 className="h-4 w-4" />, onClick: () => { void navigator.clipboard.writeText(formUrl).then(() => toast.success(t('board.linkCopied'))) } },
+              { label: t('importer.title'), icon: <Upload className="h-4 w-4" />, onClick: () => navigate(`/pipe/${pipeId}/import`) },
+            ]}
+          />
         </div>
       </div>
 
