@@ -71,7 +71,7 @@ export interface MemberDraft {
   tried: boolean
 }
 
-export const newMember = (): MemberDraft => ({ key: crypto.randomUUID(), relation: 'filho', other: '', values: {}, open: true, tried: false })
+export const newMember = (open = true): MemberDraft => ({ key: crypto.randomUUID(), relation: 'filho', other: '', values: {}, open, tried: false })
 export const memberRelation = (m: MemberDraft) => (m.relation === 'outro' && m.other.trim() ? `outro:${m.other.trim()}` : m.relation)
 /** Holder answers (for conditions) with every per-person answer taken only from the member. */
 export function memberScope(m: MemberDraft, fields: Field[], holderValues: Record<string, FieldValue>) {
@@ -81,13 +81,15 @@ export function memberErrors(m: MemberDraft, fields: Field[], holderValues: Reco
   return validate(fields, memberScope(m, fields, holderValues))
 }
 
-export function FamilyMembers({ fields, holderValues, members, onChange, onUpload, showErrors }: {
+export function FamilyMembers({ fields, holderValues, members, onChange, onUpload, showErrors, onOpen }: {
   fields: Field[] // per-person fields only
   holderValues: Record<string, FieldValue>
   members: MemberDraft[]
   onChange: (m: MemberDraft[]) => void
   onUpload: (f: File) => Promise<AttachmentValue>
   showErrors: boolean
+  /** A member was opened (or added): the holder card collapses */
+  onOpen?: () => void
 }) {
   const { t } = useTranslation()
   const titleField = fields.find((f) => f.type === 'short_text')
@@ -118,7 +120,7 @@ export function FamilyMembers({ fields, holderValues, members, onChange, onUploa
             >
               <button
                 type="button"
-                onClick={() => update(m.key, { open: !m.open })}
+                onClick={() => { if (!m.open) onOpen?.(); onChange(members.map((x) => (x.key === m.key ? { ...x, open: !x.open } : { ...x, open: false }))) }}
                 aria-expanded={m.open}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left"
               >
@@ -208,12 +210,59 @@ export function FamilyMembers({ fields, holderValues, members, onChange, onUploa
       <button
         type="button"
         disabled={members.length >= 10}
-        onClick={() => onChange([...members.map((m) => ({ ...m, open: false })), newMember()])}
+        onClick={() => { onOpen?.(); onChange([...members.map((m) => ({ ...m, open: false })), newMember()]) }}
         className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand-200 py-3.5 text-sm font-semibold text-brand-700 transition hover:border-brand-400 hover:bg-brand-50 disabled:opacity-40"
       >
         <Plus className="h-4 w-4" /> {members.length ? t('family.add') : t('family.addFirst')}
       </button>
       {members.length >= 10 && <p className="text-center text-xs text-slate-500">{t('family.max')}</p>}
     </div>
+  )
+}
+
+/* ───────── The holder's own block, same look as a member ───────── */
+export function HolderCard({ name, contactOnly, age, nErr, flagged, open, onToggle, onSave, children }: {
+  name: string; contactOnly: boolean; age: number | null; nErr: number; flagged: boolean
+  open: boolean; onToggle: () => void; onSave: () => void; children: React.ReactNode
+}) {
+  const { t } = useTranslation()
+  return (
+    <motion.div
+      id="holder"
+      layout="position"
+      className={clsx('overflow-hidden rounded-2xl border bg-white transition', flagged ? 'border-rose-300' : nErr === 0 ? 'border-brand-200' : 'border-slate-200', open && 'shadow-card')}
+    >
+      <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-700"><User className="h-5 w-5" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold text-slate-900">{name || t('family.yourData')}</span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+            <span className="rounded-md bg-brand-50 px-1.5 py-0.5 font-semibold text-brand-700">{contactOnly ? t('family.contactOnly') : t('family.you')}</span>
+            {age !== null && <span>{t('family.years', { count: age })}</span>}
+            {nErr > 0 && <span className={flagged ? 'text-rose-600' : ''}>· {t('family.missing', { count: nErr })}</span>}
+          </span>
+        </span>
+        {nErr === 0 ? (
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 text-emerald-700" title={t('family.complete')}><Check className="h-3.5 w-3.5" /></span>
+        ) : (
+          <span className={clsx('rounded-full px-2 py-0.5 text-[11px] font-semibold', flagged ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700')}>{t('family.incomplete')}</span>
+        )}
+        <ChevronDown className={clsx('h-4 w-4 text-slate-400 transition', open && 'rotate-180')} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+            <div className="space-y-7 border-t border-slate-100 px-4 pb-4 pt-4">
+              {children}
+              <div className="flex justify-end border-t border-slate-100 pt-3">
+                <button type="button" onClick={onSave} className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+                  <Check className="h-4 w-4" /> {t('family.saveData')}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }

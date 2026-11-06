@@ -7,7 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { LangSwitch } from '../components/Layout'
 import { Button, Spinner, Toggle } from '../components/ui'
-import { FamilyChoice, FamilyMembers, memberErrors, memberRelation, memberScope, newMember } from '../forms/Family'
+import { FamilyChoice, FamilyMembers, HolderCard, memberErrors, memberRelation, memberScope, newMember } from '../forms/Family'
+import { ageFrom } from '../lib/family'
 import type { MemberDraft } from '../forms/Family'
 import { FieldInput } from '../forms/FieldInput'
 import { isVisible, validate, visibleValues } from '../forms/logic'
@@ -24,7 +25,6 @@ export default function PublicForm() {
   const { t, i18n } = useTranslation()
   const { data, isLoading } = useQuery({ queryKey: ['public-form', slug], queryFn: () => repo.getPublicForm(slug), retry: 1 })
   const [values, setValues] = useState<Record<string, FieldValue>>({})
-  const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState(false)
   const [hp, setHp] = useState('')
   const useCaptcha = !!TURNSTILE_KEY && !isDemo
@@ -36,6 +36,8 @@ export default function PublicForm() {
   const [holderNeeds, setHolderNeeds] = useState(true)
   const [members, setMembers] = useState<MemberDraft[]>([])
   const [familyMsg, setFamilyMsg] = useState<string | null>(null)
+  const [holderOpen, setHolderOpen] = useState(false)
+  const [holderTried, setHolderTried] = useState(false)
 
   const allFields = useMemo(() => data?.fields ?? [], [data])
   const perPerson = useMemo(() => allFields.filter((f) => f.per_person), [allFields])
@@ -55,22 +57,24 @@ export default function PublicForm() {
     code === 'email' ? t('forms.errEmail') : code === 'phone' ? t('forms.errPhone') : t('forms.errRequired')
 
   function setValue(id: string, v: FieldValue) {
-    const next = { ...values, [id]: v }
-    setValues(next)
-    if (touched) {
-      const e = validate(fields, next)
-      setErrors(Object.fromEntries(Object.entries(e).map(([k, c]) => [k, errorText(c)])))
-    }
+    setValues({ ...values, [id]: v })
   }
+  const liveErrors = validate(fields, values)
+  const errors: Record<string, string> = touched || holderTried
+    ? Object.fromEntries(Object.entries(liveErrors).map(([k, c]) => [k, errorText(c)]))
+    : {}
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setTouched(true)
-    const e2 = validate(fields, values)
-    setErrors(Object.fromEntries(Object.entries(e2).map(([k, c]) => [k, errorText(c)])))
-    const first = fields.find((f) => e2[f.id])
+    const first = fields.find((f) => liveErrors[f.id])
     if (first) {
-      document.getElementById(`f-${first.id}`)?.closest('[data-field]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const go = () => document.getElementById(`f-${first.id}`)?.closest('[data-field]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      if (step === 'family' && !holderOpen) {
+        setHolderOpen(true)
+        setMembers(members.map((m) => ({ ...m, open: false })))
+        setTimeout(go, 260)
+      } else go()
       return
     }
     let family: Parameters<typeof repo.submitPublicForm>[4]
@@ -79,9 +83,10 @@ export default function PublicForm() {
       if (!members.length) { setFamilyMsg(t('family.needOne')); document.getElementById('family')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return }
       const bad = members.find((m) => Object.keys(memberErrors(m, perPerson, values)).length)
       if (bad) {
-        setMembers(members.map((m) => (m.key === bad.key ? { ...m, open: true, tried: true } : m)))
+        setHolderOpen(false)
+        setMembers(members.map((m) => (m.key === bad.key ? { ...m, open: true, tried: true } : { ...m, open: false })))
         setFamilyMsg(t('family.fixMembers'))
-        setTimeout(() => document.getElementById(`m-${bad.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
+        setTimeout(() => document.getElementById(`m-${bad.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 260)
         return
       }
       family = {
@@ -119,9 +124,33 @@ export default function PublicForm() {
   }
 
   const visibleFields = fields.filter((f) => isVisible(f, values))
+  const birthId = perPerson.find((f) => f.type === 'date')?.id
+  const fieldList = (
+                <AnimatePresence initial={false}>
+                  {visibleFields.map((f) => (
+                    <motion.div
+                      key={f.id}
+                      data-field
+                      layout="position"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <FieldInput
+                        field={f}
+                        value={values[f.id]}
+                        onChange={(v) => setValue(f.id, v)}
+                        error={errors[f.id]}
+                        onUpload={(file) => repo.uploadPublicFile(slug, file)}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+  )
   const errorCount = Object.keys(errors).length
   const people = step === 'family' ? members.length + (holderNeeds ? 1 : 0) : 1
-  const reset = () => { setValues({}); setErrors({}); setTouched(false); setMembers([]); setHolderNeeds(true); setFamilyMsg(null); setMode('choose'); setState('idle') }
+  const reset = () => { setValues({}); setTouched(false); setHolderTried(false); setHolderOpen(false); setMembers([]); setHolderNeeds(true); setFamilyMsg(null); setMode('choose'); setState('idle') }
 
   return (
     <div className="min-h-screen px-4 py-6 sm:py-12" style={{ background: bg }}>
@@ -147,7 +176,7 @@ export default function PublicForm() {
               </motion.div>
             ) : step === 'choose' ? (
               <motion.div key="choose" exit={{ opacity: 0 }}>
-                <FamilyChoice onPick={(m) => { setMode(m); if (m === 'family' && !members.length) setMembers([newMember()]) }} />
+                <FamilyChoice onPick={(m) => { setMode(m); setHolderOpen(false); if (m === 'family' && !members.length) setMembers([newMember(false)]) }} />
               </motion.div>
             ) : (
               <motion.form key="form" noValidate onSubmit={submit} className="space-y-7" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -162,39 +191,11 @@ export default function PublicForm() {
                     </button>
                   </div>
                 )}
-                {step === 'family' && (
-                  <div className="space-y-4">
-                    <h2 className="text-lg font-semibold text-slate-900">{t('family.yourData')}</h2>
-                    <div className="rounded-xl border border-slate-200 px-4 py-3">
-                      <Toggle checked={holderNeeds} onChange={setHolderNeeds} label={t('family.holderNeeds')} hint={t('family.holderNeedsHint')} />
-                    </div>
-                  </div>
-                )}
                 {/* honeypot: hidden from people, bots fill it */}
                 <div aria-hidden className="absolute left-[-9999px] h-px w-px overflow-hidden">
                   <label>Website<input tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)} /></label>
                 </div>
-                <AnimatePresence initial={false}>
-                  {visibleFields.map((f) => (
-                    <motion.div
-                      key={f.id}
-                      data-field
-                      layout="position"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <FieldInput
-                        field={f}
-                        value={values[f.id]}
-                        onChange={(v) => setValue(f.id, v)}
-                        error={errors[f.id]}
-                        onUpload={(file) => repo.uploadPublicFile(slug, file)}
-                      />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                {step !== 'family' && fieldList}
 
                 {step === 'family' && (
                   <section id="family" className="space-y-3 border-t border-slate-100 pt-6">
@@ -202,7 +203,23 @@ export default function PublicForm() {
                       <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900"><Users className="h-5 w-5 text-violet-600" /> {t('family.yourFamily')}</h2>
                       <p className="text-sm text-slate-500">{t('family.yourFamilyHint')}</p>
                     </div>
+                    <HolderCard
+                      name={titleId ? String(values[titleId] ?? '').trim() : ''}
+                      contactOnly={!holderNeeds}
+                      age={holderNeeds && birthId ? ageFrom(values[birthId]) : null}
+                      nErr={Object.keys(liveErrors).length}
+                      flagged={(touched || holderTried) && Object.keys(liveErrors).length > 0}
+                      open={holderOpen}
+                      onToggle={() => { if (!holderOpen) setMembers(members.map((m) => ({ ...m, open: false }))); setHolderOpen(!holderOpen) }}
+                      onSave={() => { setHolderTried(true); if (!Object.keys(liveErrors).length) setHolderOpen(false) }}
+                    >
+                      <div className="rounded-xl border border-slate-200 px-4 py-3">
+                        <Toggle checked={holderNeeds} onChange={setHolderNeeds} label={t('family.holderNeeds')} hint={t('family.holderNeedsHint')} />
+                      </div>
+                      {fieldList}
+                    </HolderCard>
                     <FamilyMembers
+                      onOpen={() => setHolderOpen(false)}
                       fields={perPerson}
                       holderValues={values}
                       members={members}
