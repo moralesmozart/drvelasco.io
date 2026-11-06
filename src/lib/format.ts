@@ -24,7 +24,7 @@ export function ageTone(iso: string) {
 
 export function formatValue(field: Field, value: FieldValue, lang: string): string {
   if (value === null || value === undefined || value === '') return '—'
-  if (Array.isArray(value)) return value.join(', ')
+  if (Array.isArray(value)) return value.map((v) => (typeof v === 'string' ? v : v.name)).join(', ')
   if (field.type === 'date' && typeof value === 'string') {
     const d = new Date(value + (value.length === 10 ? 'T00:00:00' : ''))
     return isNaN(d.getTime()) ? value : d.toLocaleDateString(lang)

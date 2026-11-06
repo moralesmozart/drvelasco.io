@@ -5,6 +5,7 @@ import { Toaster } from 'sonner'
 import { Spinner } from './components/ui'
 import { AuthProvider, useAuth } from './lib/auth'
 import Board from './pages/Board'
+import FormBuilder from './pages/FormBuilder'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import PublicForm from './pages/PublicForm'
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="/f/:slug" element={<PublicForm />} />
             <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
             <Route path="/pipe/:pipeId" element={<RequireAuth><Board /></RequireAuth>} />
+            <Route path="/pipe/:pipeId/form" element={<RequireAuth><FormBuilder /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>

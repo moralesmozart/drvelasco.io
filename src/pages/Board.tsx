@@ -4,7 +4,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Link2, Plus, Search, X } from 'lucide-react'
+import { ChevronLeft, LayoutList, Link2, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
@@ -26,7 +26,7 @@ export default function Board() {
   const { pipeId = '' } = useParams()
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
-  const { data, isLoading, error } = useQuery({ queryKey: ['board', pipeId], queryFn: () => repo.getBoard(pipeId) })
+  const { data, isLoading, error } = useQuery({ queryKey: ['board', pipeId], queryFn: () => repo.getBoard(pipeId), staleTime: 0 })
 
   const [phases, setPhases] = useState<Phase[]>([])
   const [byPhase, setByPhase] = useState<Record<string, Card[]>>({})
@@ -203,6 +203,9 @@ export default function Board() {
           )}
         </div>
         <div className="ml-auto flex gap-2">
+          <Link to={`/pipe/${pipeId}/form`}>
+            <Button variant="secondary" size="sm"><LayoutList className="h-4 w-4" /> {t('board.forms')}</Button>
+          </Link>
           <Button
             variant="secondary"
             size="sm"

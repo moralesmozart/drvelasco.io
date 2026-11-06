@@ -1,5 +1,5 @@
 import type { Repo } from './repo'
-import type { Board, Card, Field, Phase, Pipe, Transition } from './types'
+import type { Board, Card, Field, Phase, Pipe, PublicFormDef, Transition } from './types'
 import { DEFAULT_PHASES } from './defaults'
 
 /**
@@ -14,7 +14,7 @@ interface DemoDB {
   transitions: Transition[]
 }
 
-const KEY = 'drvelasco-demo-v1'
+const KEY = 'drvelasco-demo-v2'
 const uid = () => crypto.randomUUID()
 const now = () => new Date().toISOString()
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString()
@@ -22,7 +22,13 @@ const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString()
 function seed(): DemoDB {
   const pipe: Pipe = {
     id: uid(), name: 'Solicitações', icon: 'clipboard', color: '#0d9488', form_slug: 'demo1234',
-    form_settings: { title: 'Nova solicitação' }, created_at: now(),
+    form_settings: {
+      title: 'Nova solicitação',
+      description: 'Preencha o formulário e entraremos em contato o quanto antes.',
+      brand_color: '#8bbcb4',
+      success_message: 'Recebemos sua solicitação! Entraremos em contato em breve.',
+    },
+    created_at: now(),
   }
   const ph = (name: string, color: string, position: number, is_final = false): Phase => ({
     id: uid(), pipe_id: pipe.id, name, color, description: null, position, is_final,
@@ -35,10 +41,22 @@ function seed(): DemoDB {
     id: uid(), pipe_id: pipe.id, phase_id: null, type, label, description: null, required: false,
     options: [], conditions: [], show_on_card: false, position, ...extra,
   })
-  const name = f('Nome completo com todos os sobrenomes', 'short_text', 0, { required: true, show_on_card: true })
+  const name = f('Nome completo', 'short_text', 0, { required: true, show_on_card: true })
   const doc = f('Número do documento', 'short_text', 1, { required: true, show_on_card: true })
   const due = f('Data desejada', 'date', 2, { show_on_card: true })
-  const fields = [name, doc, due]
+  const phone = f('Telefone (WhatsApp)', 'phone', 3, { description: 'Com código do país. Usaremos apenas para atendimento.' })
+  const email = f('E-mail', 'email', 4)
+  const topics = f('Quais serviços você precisa?', 'checklist', 5, { options: ['Consultoria', 'Documentação', 'Tradução', 'Outro'] })
+  const other = f('Descreva o outro serviço', 'short_text', 6, {
+    conditions: [{ field_id: topics.id, op: 'contains', value: 'Outro' }],
+  })
+  const files = f('Anexos', 'attachment', 7, { description: 'Opcional. Imagens ou PDF, até 10 MB.' })
+  const contact = f('Como prefere seguir?', 'radio', 8, { options: ['Videochamada', 'Telefone', 'Só por mensagem'] })
+  const agree = f('Você declara que as informações são verdadeiras?', 'radio', 9, { required: true, options: ['Sim'] })
+  const notes = { ...f('Notas internas', 'long_text', 0), phase_id: phases[1].id }
+  const pay = { ...f('Forma de pagamento', 'checklist', 1, { required: true, options: ['Transferência', 'Cartão', 'Outro'] }), phase_id: phases[1].id }
+  const value = { ...f('Valor', 'currency', 2), phase_id: phases[1].id }
+  const fields = [name, doc, due, phone, email, topics, other, files, contact, agree, notes, pay, value]
 
   const people: Array<[string, string, string, number, number]> = [
     // name, document, date, phase index, days in phase
@@ -67,6 +85,11 @@ function seed(): DemoDB {
 
 let db: DemoDB = load()
 const listeners = new Set<() => void>()
+
+// Another tab (e.g. the public form) changed the demo data: reload it everywhere.
+window.addEventListener('storage', (e) => {
+  if (e.key === KEY) { db = load(); listeners.forEach((l) => l()) }
+})
 
 function load(): DemoDB {
   try {
@@ -175,12 +198,62 @@ export const demoRepo: Repo = {
     db.cards = db.cards.filter((c) => c.id !== cardId)
     save()
   },
-  subscribe(_pipeId, onChange) {
-    // Other tabs editing the same demo data
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === KEY) { db = load(); onChange() }
+  async updateFormSettings(pipeId, settings) {
+    db.pipes = db.pipes.map((p) => (p.id === pipeId ? { ...p, form_settings: settings as Record<string, unknown> } : p))
+    save()
+  },
+  async createField(pipeId, input, position) {
+    const field: Field = { ...input, id: uid(), pipe_id: pipeId, position }
+    db.fields.push(field)
+    save()
+    return delay(field)
+  },
+  async updateField(id, patch) {
+    db.fields = db.fields.map((f) => (f.id === id ? { ...f, ...patch } : f))
+    save()
+  },
+  async deleteField(id) {
+    db.fields = db.fields
+      .filter((f) => f.id !== id)
+      .map((f) => ({ ...f, conditions: f.conditions.filter((c) => c.field_id !== id) }))
+    save()
+  },
+  async reorderFields(orderedIds) {
+    db.fields = db.fields.map((f) => (orderedIds.includes(f.id) ? { ...f, position: orderedIds.indexOf(f.id) } : f))
+    save()
+  },
+  async getPublicForm(slug) {
+    const pipe = db.pipes.find((p) => p.form_slug === slug)
+    if (!pipe) return delay(null)
+    const def: PublicFormDef = {
+      pipe: { id: pipe.id, name: pipe.name, color: pipe.color, settings: pipe.form_settings },
+      fields: db.fields.filter((f) => f.pipe_id === pipe.id && f.phase_id === null).sort((a, b) => a.position - b.position),
     }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    return delay(def)
+  },
+  async uploadPublicFile(_slug, file) {
+    // Demo: nothing is uploaded, only the file name is kept.
+    await new Promise((r) => setTimeout(r, 400))
+    return { path: `incoming/${uid()}`, name: file.name, size: file.size, mime: file.type }
+  },
+  async submitPublicForm(slug, values, honeypot) {
+    if (honeypot) return
+    const pipe = db.pipes.find((p) => p.form_slug === slug)
+    if (!pipe) throw new Error('form_not_found')
+    const first = db.phases.filter((p) => p.pipe_id === pipe.id).sort((a, b) => a.position - b.position)[0]
+    const titleField = db.fields
+      .filter((f) => f.pipe_id === pipe.id && f.phase_id === null && f.type === 'short_text')
+      .sort((a, b) => a.position - b.position)[0]
+    const title = String((titleField && values[titleField.id]) || 'Novo card')
+    const max = Math.max(0, ...db.cards.filter((c) => c.phase_id === first.id).map((c) => c.position))
+    db.cards.push({
+      id: uid(), pipe_id: pipe.id, phase_id: first.id, title, values, position: max + 1000,
+      created_via: 'public_form', phase_entered_at: now(), created_at: now(), updated_at: now(),
+    })
+    save()
+  },
+  subscribe(_pipeId, onChange) {
+    listeners.add(onChange)
+    return () => { listeners.delete(onChange) }
   },
 }

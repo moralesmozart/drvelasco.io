@@ -46,7 +46,14 @@ export interface Field {
   position: number
 }
 
-export type FieldValue = string | number | string[] | null
+export interface AttachmentValue {
+  path: string
+  name: string
+  size: number
+  mime: string
+}
+
+export type FieldValue = string | number | string[] | AttachmentValue[] | null
 
 export interface Card {
   id: string
@@ -75,3 +82,18 @@ export interface Board {
 }
 
 export type PhaseInput = Pick<Phase, 'name' | 'color' | 'description' | 'is_final'>
+
+export interface FormSettings {
+  title?: string
+  description?: string
+  brand_color?: string
+  success_message?: string
+  submit_label?: string
+}
+
+export interface PublicFormDef {
+  pipe: { id: string; name: string; color: string; settings: FormSettings }
+  fields: Field[]
+}
+
+export type FieldInput = Omit<Field, 'id' | 'pipe_id' | 'position'>

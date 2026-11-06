@@ -1,4 +1,6 @@
-import type { Board, Card, FieldValue, Phase, PhaseInput, Pipe, PipeSummary } from './types'
+import type {
+  AttachmentValue, Board, Card, Field, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef,
+} from './types'
 import { supabase, isSupabaseConfigured } from './supabase'
 import { demoRepo } from './demoRepo'
 import { DEFAULT_PHASES } from './defaults'
@@ -21,6 +23,17 @@ export interface Repo {
   createCard(pipeId: string, phaseId: string, title: string, values: Record<string, FieldValue>): Promise<Card>
   moveCard(cardId: string, phaseId: string, position: number): Promise<void>
   deleteCard(cardId: string): Promise<void>
+
+  updateFormSettings(pipeId: string, settings: FormSettings): Promise<void>
+  createField(pipeId: string, input: FieldInput, position: number): Promise<Field>
+  updateField(id: string, patch: Partial<FieldInput>): Promise<void>
+  deleteField(id: string): Promise<void>
+  reorderFields(orderedIds: string[]): Promise<void>
+
+  /** Public (no login) */
+  getPublicForm(slug: string): Promise<PublicFormDef | null>
+  uploadPublicFile(slug: string, file: File): Promise<AttachmentValue>
+  submitPublicForm(slug: string, values: Record<string, FieldValue>, honeypot: string): Promise<void>
 
   /** Calls back whenever cards/phases of the pipe change elsewhere. Returns unsubscribe. */
   subscribe(pipeId: string, onChange: () => void): () => void
@@ -120,6 +133,39 @@ const supabaseRepo: Repo = {
   },
   async deleteCard(cardId) {
     check(await supabase!.from('cards').delete().eq('id', cardId))
+  },
+
+  async updateFormSettings(pipeId, settings) {
+    check(await supabase!.from('pipes').update({ form_settings: settings }).eq('id', pipeId))
+  },
+  async createField(pipeId, input, position) {
+    return check(await supabase!.from('fields').insert({ ...input, pipe_id: pipeId, position }).select().single()) as Field
+  },
+  async updateField(id, patch) {
+    check(await supabase!.from('fields').update(patch).eq('id', id))
+  },
+  async deleteField(id) {
+    check(await supabase!.from('fields').delete().eq('id', id))
+  },
+  async reorderFields(orderedIds) {
+    await Promise.all(
+      orderedIds.map((id, i) => supabase!.from('fields').update({ position: i }).eq('id', id).then(check)),
+    )
+  },
+
+  async getPublicForm(slug) {
+    const data = check(await supabase!.rpc('get_public_form', { p_slug: slug })) as PublicFormDef | null
+    return data
+  },
+  async uploadPublicFile(_slug, file) {
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const path = `incoming/${crypto.randomUUID()}.${ext}`
+    const { error } = await supabase!.storage.from('attachments').upload(path, file, { contentType: file.type, upsert: false })
+    if (error) throw error
+    return { path, name: file.name, size: file.size, mime: file.type }
+  },
+  async submitPublicForm(slug, values, honeypot) {
+    check(await supabase!.rpc('submit_public_form', { p_slug: slug, p_values: values, p_hp: honeypot }))
   },
 
   subscribe(pipeId, onChange) {
