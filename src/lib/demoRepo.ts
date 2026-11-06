@@ -1,5 +1,5 @@
 import type { Repo } from './repo'
-import type { Board, Card, Field, Phase, Pipe, PublicFormDef, Transition } from './types'
+import type { Board, Card, CardEvent, Field, Phase, Pipe, PublicFormDef, Transition } from './types'
 import { DEFAULT_PHASES } from './defaults'
 
 /**
@@ -12,9 +12,10 @@ interface DemoDB {
   fields: Field[]
   cards: Card[]
   transitions: Transition[]
+  events?: CardEvent[]
 }
 
-const KEY = 'drvelasco-demo-v2'
+const KEY = 'drvelasco-demo-v3'
 const uid = () => crypto.randomUUID()
 const now = () => new Date().toISOString()
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString()
@@ -80,7 +81,13 @@ function seed(): DemoDB {
     [inbox, doing], [doing, pending], [doing, paidA], [doing, paidB], [doing, done],
     [pending, paidA], [pending, paidB], [paidA, done], [paidB, done],
   ].map(([from_phase_id, to_phase_id]) => ({ from_phase_id, to_phase_id }))
-  return { pipes: [pipe], phases, fields, cards, transitions }
+  const events: CardEvent[] = cards.flatMap((c) => [
+    { id: uid(), card_id: c.id, type: 'created' as const, payload: { phase_id: phases[0].id, via: 'public_form' }, created_at: c.created_at },
+    ...(c.phase_id !== phases[0].id
+      ? [{ id: uid(), card_id: c.id, type: 'moved' as const, payload: { from: phases[0].id, to: c.phase_id }, created_at: c.phase_entered_at }]
+      : []),
+  ])
+  return { pipes: [pipe], phases, fields, cards, transitions, events }
 }
 
 let db: DemoDB = load()
@@ -103,6 +110,10 @@ function save() {
   listeners.forEach((l) => l())
 }
 const delay = <T,>(v: T) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), 120))
+
+function logEvent(card_id: string, type: CardEvent['type'], payload: Record<string, unknown>) {
+  ;(db.events ??= []).push({ id: uid(), card_id, type, payload, created_at: now() })
+}
 
 export function resetDemo() {
   db = seed()
@@ -183,16 +194,44 @@ export const demoRepo: Repo = {
       created_via: 'internal', phase_entered_at: now(), created_at: now(), updated_at: now(),
     }
     db.cards.push(card)
+    logEvent(card.id, 'created', { phase_id: phaseId, via: 'internal' })
     save()
     return delay(card)
   },
   async moveCard(cardId, phaseId, position) {
+    const before = db.cards.find((c) => c.id === cardId)
+    if (before && before.phase_id !== phaseId) logEvent(cardId, 'moved', { from: before.phase_id, to: phaseId })
     db.cards = db.cards.map((c) =>
       c.id === cardId
         ? { ...c, phase_id: phaseId, position, phase_entered_at: c.phase_id === phaseId ? c.phase_entered_at : now() }
         : c,
     )
     save()
+  },
+  async updateCard(cardId, patch) {
+    const c = db.cards.find((x) => x.id === cardId)
+    if (!c) return
+    if (patch.title !== undefined && patch.title !== c.title) logEvent(cardId, 'title_edited', { old: c.title, new: patch.title })
+    if (patch.values) {
+      const keys = new Set([...Object.keys(c.values), ...Object.keys(patch.values)])
+      for (const k of keys) {
+        if (JSON.stringify(c.values[k] ?? null) !== JSON.stringify(patch.values[k] ?? null)) {
+          logEvent(cardId, 'field_edited', { field_id: k, old: c.values[k] ?? null, new: patch.values[k] ?? null })
+        }
+      }
+    }
+    db.cards = db.cards.map((x) => (x.id === cardId ? { ...x, ...patch, updated_at: now() } : x))
+    save()
+  },
+  async getCardEvents(cardId) {
+    return delay((db.events ?? []).filter((e) => e.card_id === cardId).sort((a, b) => b.created_at.localeCompare(a.created_at)))
+  },
+  async uploadCardFile(_cardId, file) {
+    await new Promise((r) => setTimeout(r, 300))
+    return { path: `demo/${uid()}`, name: file.name, size: file.size, mime: file.type }
+  },
+  async getFileUrl() {
+    return null // demo mode keeps no files
   },
   async deleteCard(cardId) {
     db.cards = db.cards.filter((c) => c.id !== cardId)
@@ -250,6 +289,7 @@ export const demoRepo: Repo = {
       id: uid(), pipe_id: pipe.id, phase_id: first.id, title, values, position: max + 1000,
       created_via: 'public_form', phase_entered_at: now(), created_at: now(), updated_at: now(),
     })
+    logEvent(db.cards[db.cards.length - 1].id, 'created', { phase_id: first.id, via: 'public_form' })
     save()
   },
   subscribe(_pipeId, onChange) {

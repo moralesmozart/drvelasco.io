@@ -11,7 +11,7 @@ export function timeSince(iso: string, lang: string) {
       return new Intl.NumberFormat(lang, { style: 'unit', unit, unitDisplay: 'long' }).format(n)
     }
   }
-  return new Intl.NumberFormat(lang, { style: 'unit', unit: 'minute', unitDisplay: 'long' }).format(0)
+  return new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(0, 'second')
 }
 
 /** Ageing colour for the "time in phase" chip. */

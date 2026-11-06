@@ -97,3 +97,11 @@ export interface PublicFormDef {
 }
 
 export type FieldInput = Omit<Field, 'id' | 'pipe_id' | 'position'>
+
+export interface CardEvent {
+  id: string | number
+  card_id: string
+  type: 'created' | 'moved' | 'field_edited' | 'title_edited'
+  payload: Record<string, unknown>
+  created_at: string
+}

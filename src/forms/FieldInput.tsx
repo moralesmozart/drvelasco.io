@@ -20,9 +20,10 @@ interface Props {
   onChange: (v: FieldValue) => void
   error?: string
   onUpload?: (file: File) => Promise<AttachmentValue>
+  onOpenFile?: (file: AttachmentValue) => void
 }
 
-export function FieldInput({ field, value, onChange, error, onUpload }: Props) {
+export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile }: Props) {
   const { t } = useTranslation()
   const id = `f-${field.id}`
   const describedBy = [field.description && `${id}-d`, error && `${id}-e`].filter(Boolean).join(' ') || undefined
@@ -95,7 +96,7 @@ export function FieldInput({ field, value, onChange, error, onUpload }: Props) {
         )
       }
       case 'attachment':
-        return <Uploader id={id} value={Array.isArray(value) ? (value as AttachmentValue[]) : []} onChange={onChange} onUpload={onUpload} hasError={!!error} />
+        return <Uploader id={id} value={Array.isArray(value) ? (value as AttachmentValue[]) : []} onChange={onChange} onUpload={onUpload} onOpenFile={onOpenFile} hasError={!!error} />
       default:
         return <input {...common} type="text" value={str} onChange={(e) => onChange(e.target.value)} className={clsx(inputCls, 'h-12', error ? errCls : okCls)} />
     }
@@ -150,8 +151,9 @@ function fmtSize(bytes: number) {
   return bytes > 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
 }
 
-function Uploader({ id, value, onChange, onUpload, hasError }: {
-  id: string; value: AttachmentValue[]; onChange: (v: FieldValue) => void; onUpload?: (f: File) => Promise<AttachmentValue>; hasError: boolean
+function Uploader({ id, value, onChange, onUpload, onOpenFile, hasError }: {
+  id: string; value: AttachmentValue[]; onChange: (v: FieldValue) => void; onUpload?: (f: File) => Promise<AttachmentValue>
+  onOpenFile?: (f: AttachmentValue) => void; hasError: boolean
 }) {
   const { t } = useTranslation()
   const ref = useRef<HTMLInputElement>(null)
@@ -203,7 +205,11 @@ function Uploader({ id, value, onChange, onUpload, hasError }: {
           {value.map((a) => (
             <li key={a.path} className="flex items-center gap-2.5 rounded-lg bg-slate-50 px-3 py-2 text-sm">
               {a.mime.startsWith('image/') ? <ImageIcon className="h-4 w-4 text-slate-400" /> : <FileText className="h-4 w-4 text-slate-400" />}
-              <span className="min-w-0 flex-1 truncate text-slate-700">{a.name}</span>
+              {onOpenFile ? (
+                <button type="button" onClick={() => onOpenFile(a)} className="min-w-0 flex-1 truncate text-left font-medium text-brand-700 hover:underline">{a.name}</button>
+              ) : (
+                <span className="min-w-0 flex-1 truncate text-slate-700">{a.name}</span>
+              )}
               <span className="text-xs text-slate-400">{fmtSize(a.size)}</span>
               <button type="button" aria-label={t('common.delete')} onClick={() => onChange(value.filter((x) => x.path !== a.path))} className="text-slate-400 hover:text-rose-600">
                 <X className="h-4 w-4" />

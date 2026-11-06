@@ -1,4 +1,5 @@
-import type { Card, Transition } from '../lib/types'
+import { isEmpty, isVisible } from '../forms/logic'
+import type { Card, Field, FieldValue, Transition } from '../lib/types'
 
 /** A phase with no outgoing transitions configured may move anywhere. */
 export function canMove(transitions: Transition[], from: string, to: string) {
@@ -25,4 +26,9 @@ export function groupByPhase(cards: Card[], phaseIds: string[]) {
   const map: Record<string, Card[]> = Object.fromEntries(phaseIds.map((id) => [id, []]))
   for (const c of [...cards].sort((a, b) => a.position - b.position)) (map[c.phase_id] ??= []).push(c)
   return map
+}
+
+/** Required fields of a phase that are visible (conditions) and still empty. */
+export function missingRequired(fields: Field[], phaseId: string, values: Record<string, FieldValue>) {
+  return fields.filter((f) => f.phase_id === phaseId && f.required && f.type !== 'info' && isVisible(f, values) && isEmpty(values[f.id]))
 }

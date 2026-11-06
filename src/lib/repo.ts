@@ -1,5 +1,5 @@
 import type {
-  AttachmentValue, Board, Card, Field, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef,
+  AttachmentValue, Board, Card, CardEvent, Field, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef,
 } from './types'
 import { supabase, isSupabaseConfigured } from './supabase'
 import { demoRepo } from './demoRepo'
@@ -23,6 +23,11 @@ export interface Repo {
   createCard(pipeId: string, phaseId: string, title: string, values: Record<string, FieldValue>): Promise<Card>
   moveCard(cardId: string, phaseId: string, position: number): Promise<void>
   deleteCard(cardId: string): Promise<void>
+  updateCard(cardId: string, patch: { title?: string; values?: Record<string, FieldValue> }): Promise<void>
+  getCardEvents(cardId: string): Promise<CardEvent[]>
+  uploadCardFile(cardId: string, file: File): Promise<AttachmentValue>
+  /** Short-lived link to view a private file. */
+  getFileUrl(path: string): Promise<string | null>
 
   updateFormSettings(pipeId: string, settings: FormSettings): Promise<void>
   createField(pipeId: string, input: FieldInput, position: number): Promise<Field>
@@ -133,6 +138,26 @@ const supabaseRepo: Repo = {
   },
   async deleteCard(cardId) {
     check(await supabase!.from('cards').delete().eq('id', cardId))
+  },
+
+  async updateCard(cardId, patch) {
+    check(await supabase!.from('cards').update(patch).eq('id', cardId))
+  },
+  async getCardEvents(cardId) {
+    return check(
+      await supabase!.from('card_events').select('*').eq('card_id', cardId).order('created_at', { ascending: false }).limit(200),
+    ) as CardEvent[]
+  },
+  async uploadCardFile(cardId, file) {
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const path = `cards/${cardId}/${crypto.randomUUID()}.${ext}`
+    const { error } = await supabase!.storage.from('attachments').upload(path, file, { contentType: file.type, upsert: false })
+    if (error) throw error
+    return { path, name: file.name, size: file.size, mime: file.type }
+  },
+  async getFileUrl(path) {
+    const { data } = await supabase!.storage.from('attachments').createSignedUrl(path, 300)
+    return data?.signedUrl ?? null
   },
 
   async updateFormSettings(pipeId, settings) {

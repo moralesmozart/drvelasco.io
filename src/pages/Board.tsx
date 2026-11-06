@@ -7,15 +7,16 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, LayoutList, Link2, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { CardContent } from '../board/CardTile'
 import { DeletePhaseDialog, PhaseDialog } from '../board/PhaseDialogs'
 import { PhaseColumn } from '../board/PhaseColumn'
-import { allowedTargets, canMove, groupByPhase, positionAt } from '../board/rules'
+import { allowedTargets, canMove, groupByPhase, missingRequired, positionAt } from '../board/rules'
 import { Header, PipeIcon } from '../components/Layout'
 import { Button, Input, Label, Modal, Spinner } from '../components/ui'
-import { formatValue } from '../lib/format'
+import { AnimatePresence, motion } from 'framer-motion'
+import { CardDrawer } from '../board/CardDrawer'
 import { repo } from '../lib/repo'
 import type { Card, Phase } from '../lib/types'
 
@@ -24,7 +25,7 @@ const stripPhase = (id: string) => id.slice(6)
 
 export default function Board() {
   const { pipeId = '' } = useParams()
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({ queryKey: ['board', pipeId], queryFn: () => repo.getBoard(pipeId), staleTime: 0 })
 
@@ -37,7 +38,9 @@ export default function Board() {
   const [phaseDialog, setPhaseDialog] = useState<{ phase: Phase | null } | null>(null)
   const [deleting, setDeleting] = useState<Phase | null>(null)
   const [newCardPhase, setNewCardPhase] = useState<string | null>(null)
-  const [openCard, setOpenCard] = useState<Card | null>(null)
+  const [params, setParams] = useSearchParams()
+  const openCardId = params.get('card')
+  const setOpenCard = (c: Card | null) => setParams(c ? { card: c.id } : {}, { replace: false })
 
   // Sync server → local state (skipped mid-drag so the board doesn't jump)
   useEffect(() => {
@@ -45,6 +48,16 @@ export default function Board() {
     setPhases(data.phases)
     setByPhase(groupByPhase(data.cards, data.phases.map((p) => p.id)))
   }, [data, active])
+
+  // Esc closes the open card (unless a dialog on top handles it first)
+  useEffect(() => {
+    if (!openCardId) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('[role="dialog"] [role="dialog"], [aria-modal="true"] ~ [aria-modal="true"]')) setParams({})
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [openCardId, setParams])
 
   useEffect(() => repo.subscribe(pipeId, () => qc.invalidateQueries({ queryKey: ['board', pipeId] })), [pipeId, qc])
 
@@ -151,6 +164,16 @@ export default function Board() {
       return
     }
 
+    if (container !== origin) {
+      const card = data!.cards.find((c) => c.id === e.active.id)
+      const missing = card ? missingRequired(data!.fields, origin, card.values) : []
+      if (missing.length) {
+        toast.error(t('card.dragMissing', { fields: missing.map((f) => f.label).join(', ') }))
+        setByPhase(groupByPhase(data!.cards, phases.map((p) => p.id)))
+        return
+      }
+    }
+
     const position = positionAt(list, index)
     setByPhase((prev) => ({ ...prev, [container]: list.map((c, i) => (i === index ? { ...c, position } : c)) }))
     try {
@@ -174,6 +197,7 @@ export default function Board() {
   if (isLoading) return <div className="grid min-h-screen place-items-center"><Spinner /></div>
   if (error || !data) return <div className="grid min-h-screen place-items-center text-slate-500">{t('common.error')}</div>
 
+  const openCard = openCardId ? data.cards.find((c) => c.id === openCardId) ?? null : null
   const formUrl = `${location.origin}${location.pathname}#/f/${data.pipe.form_slug}`
   const blockedFor = (phaseId: string) =>
     active?.type === 'card' && dragFrom.current !== null && !canMove(transitions, dragFrom.current, phaseId)
@@ -287,24 +311,33 @@ export default function Board() {
           refresh()
         }}
       />
-      <Modal open={!!openCard} onClose={() => setOpenCard(null)} title={openCard?.title} width="max-w-lg">
+      <AnimatePresence>
         {openCard && (
-          <div className="space-y-4">
-            <span className="inline-flex rounded-md px-2 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: phases.find((p) => p.id === openCard.phase_id)?.color }}>
-              {phaseName(openCard.phase_id)}
-            </span>
-            <dl className="space-y-3">
-              {startFields.filter((f) => f.type !== 'info').map((f) => (
-                <div key={f.id}>
-                  <dt className="text-xs font-medium text-slate-500">{f.label}</dt>
-                  <dd className="text-sm text-slate-800">{formatValue(f, openCard.values[f.id] ?? null, i18n.language)}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">{t('board.openCardSoon')}</p>
-          </div>
+          <motion.div className="fixed inset-0 z-40 flex items-stretch justify-center sm:p-4 lg:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => setOpenCard(null)} />
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label={openCard.title}
+              className="relative flex w-full max-w-[1400px] flex-col overflow-hidden bg-white shadow-lift sm:rounded-2xl"
+              initial={{ y: 24, opacity: 0, scale: 0.99 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 16, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+            >
+              <CardDrawer
+                board={data}
+                card={openCard}
+                onClose={() => setOpenCard(null)}
+                onDeleted={() => { setOpenCard(null); refresh(); toast.success(t('card.deleted')) }}
+                onMoved={async (cardId, phaseId) => {
+                  const max = Math.max(0, ...data.cards.filter((c) => c.phase_id === phaseId).map((c) => c.position))
+                  await repo.moveCard(cardId, phaseId, max + 1000)
+                  await refresh()
+                }}
+              />
+            </motion.div>
+          </motion.div>
         )}
-      </Modal>
+      </AnimatePresence>
     </div>
   )
 }
