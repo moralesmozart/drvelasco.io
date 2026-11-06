@@ -24,10 +24,12 @@ export function PipeIcon({ name, color, size = 'md' }: { name: string; color: st
   )
 }
 
-export function Logo() {
+export function Logo({ light }: { light?: boolean }) {
   return (
-    <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight text-slate-900">
-      <img src="./favicon.svg" alt="" className="h-7 w-7" />
+    <Link to="/" className={clsx('flex items-center gap-2.5 text-lg font-bold tracking-tight', light ? 'text-white' : 'text-slate-900')}>
+      <span className={clsx('grid h-9 w-9 place-items-center rounded-xl', light ? 'bg-white text-care-700' : 'bg-care-700 text-white')}>
+        <Stethoscope className="h-5 w-5" />
+      </span>
       drvelasco
     </Link>
   )
