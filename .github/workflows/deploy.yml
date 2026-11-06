@@ -35,6 +35,7 @@ jobs:
           VITE_SHARE_TITLE: ${{ vars.VITE_SHARE_TITLE }}
           VITE_SHARE_DESCRIPTION: ${{ vars.VITE_SHARE_DESCRIPTION }}
           VITE_SHARE_IMAGE: ${{ vars.VITE_SHARE_IMAGE }}
+          VITE_SHARE_URL: ${{ vars.VITE_SHARE_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
