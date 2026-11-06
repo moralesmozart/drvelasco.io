@@ -203,7 +203,7 @@ export default function Board() {
   if (error || !data) return <div className="grid min-h-screen place-items-center text-slate-500">{t('common.error')}</div>
 
   const openCard = openCardId ? data.cards.find((c) => c.id === openCardId) ?? null : null
-  const formUrl = `${location.origin}${location.pathname}#/f/${data.pipe.form_slug}`
+  const formUrl = `${location.origin}${location.pathname}?f=${data.pipe.form_slug}`
   const blockedFor = (phaseId: string) =>
     active?.type === 'card' && dragFrom.current !== null && !canMove(transitions, dragFrom.current, phaseId)
 

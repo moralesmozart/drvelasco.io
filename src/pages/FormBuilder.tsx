@@ -100,7 +100,7 @@ export default function FormBuilder() {
 
   if (isLoading || !data) return <div className="grid min-h-screen place-items-center"><Spinner /></div>
 
-  const formUrl = `${location.origin}${location.pathname}#/f/${data.pipe.form_slug}`
+  const formUrl = `${location.origin}${location.pathname}?f=${data.pipe.form_slug}`
   const scopes = [{ id: null as string | null, name: t('builder.startForm'), color: '#0f172a' }, ...data.phases.map((p) => ({ id: p.id as string | null, name: p.name, color: p.color }))]
 
   return (
