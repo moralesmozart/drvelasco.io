@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react'
+import { existsSync } from 'node:fs'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
@@ -6,7 +7,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').repl
 /**
  * Link preview (WhatsApp, iMessage, Slack…): Open Graph tags filled from build variables,
  * so no client text or image lives in the repo. Skipped when VITE_SHARE_TITLE is not set.
- * The image defaults to the public "share" bucket: <supabase>/storage/v1/object/public/share/preview.jpg
+ * The image is public/preview.jpg (1200×630), served next to the site.
  */
 function sharePreview(env: Record<string, string>): Plugin {
   return {
@@ -15,9 +16,9 @@ function sharePreview(env: Record<string, string>): Plugin {
       const title = env.VITE_SHARE_TITLE?.trim()
       if (!title) return html
       const desc = env.VITE_SHARE_DESCRIPTION?.trim() ?? ''
-      const image = env.VITE_SHARE_IMAGE?.trim()
-        || (env.VITE_SUPABASE_URL ? `${env.VITE_SUPABASE_URL.replace(/\/$/, '')}/storage/v1/object/public/share/preview.jpg` : '')
-      const site = env.VITE_SHARE_URL?.trim()
+      const site = env.VITE_SHARE_URL?.trim().replace(/\/?$/, '/')
+      // public/preview.jpg ships with the site; VITE_SHARE_IMAGE can point elsewhere
+      const image = env.VITE_SHARE_IMAGE?.trim() || (site && existsSync('public/preview.jpg') ? `${site}preview.jpg` : '')
       const tags = [
         `<meta property="og:type" content="website" />`,
         `<meta property="og:site_name" content="${esc(title)}" />`,
