@@ -57,8 +57,12 @@ export default function Reports() {
   )
 }
 
-function ReportBody({ board, events, period, lang }: { board: Board; events: CardEvent[]; period: Period; lang: string }) {
+function ReportBody({ board: fullBoard, events: allEvents, period, lang }: { board: Board; events: CardEvent[]; period: Period; lang: string }) {
   const { t } = useTranslation()
+  // A family request counts once (its holder); members ride along
+  const board = { ...fullBoard, cards: fullBoard.cards.filter((c) => !c.family_of) }
+  const holderIds = new Set(board.cards.map((c) => c.id))
+  const events = allEvents.filter((e) => holderIds.has(e.card_id))
   const now = Date.now()
   const since = period === 'all' ? 0 : now - Number(period) * DAY
   const finals = new Set(board.phases.filter((p) => p.is_final).map((p) => p.id))

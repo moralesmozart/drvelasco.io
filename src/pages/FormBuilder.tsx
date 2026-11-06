@@ -3,7 +3,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronLeft, Copy, ExternalLink, GitBranch, GripVertical, Languages, Palette, Plus, Trash2, X } from 'lucide-react'
+import { ChevronLeft, Copy, ExternalLink, GitBranch, GripVertical, Languages, Palette, Plus, Trash2, Users, X } from 'lucide-react'
 import clsx from 'clsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -68,7 +68,7 @@ export default function FormBuilder() {
     const meta = fieldMeta(type)
     const input: FieldInputT = {
       phase_id: scope, type, label: type === 'info' ? '' : t('builder.newFieldLabel'), description: null,
-      required: false, options: meta.hasOptions ? ['Opção 1', 'Opção 2'] : [], conditions: [], show_on_card: false, translations: {},
+      required: false, options: meta.hasOptions ? ['Opção 1', 'Opção 2'] : [], conditions: [], show_on_card: false, translations: {}, per_person: false,
     }
     const created = await track(repo.createField(pipeId, input, scoped.length))
     setFields((fs) => [...fs, created])
@@ -299,6 +299,11 @@ function FieldRow({ field, active, onSelect, onDuplicate, onDelete }: { field: F
                 <GitBranch className="h-3 w-3" /> {t('builder.conditional')}
               </span>
             )}
+            {field.per_person && (
+              <span className="inline-flex items-center gap-1 rounded bg-violet-50 px-1.5 py-0.5 font-medium text-violet-700">
+                <Users className="h-3 w-3" /> {t('family.perPerson')}
+              </span>
+            )}
           </span>
         </span>
       </button>
@@ -337,6 +342,9 @@ function FieldEditor({ field, candidates, onChange }: { field: Field; candidates
           <Toggle checked={field.required} onChange={(required) => onChange({ required })} label={t('builder.required')} />
           {field.phase_id === null && (
             <Toggle checked={field.show_on_card} onChange={(show_on_card) => onChange({ show_on_card })} label={t('builder.showOnCard')} hint={t('builder.showOnCardHint')} />
+          )}
+          {field.phase_id === null && (
+            <Toggle checked={!!field.per_person} onChange={(per_person) => onChange({ per_person })} label={t('family.perPersonToggle')} hint={t('family.perPersonHint')} />
           )}
         </div>
       )}

@@ -7,7 +7,7 @@ import { Button, Modal } from '../components/ui'
 import { fieldText } from '../lib/localize'
 import type { Card, Field, PdfTemplate } from '../lib/types'
 import { templateExtensions } from './extensions'
-import { renderPdf } from './render'
+import { renderPdf, renderPdfMany } from './render'
 import { collectKeys, resolveKey, type RenderContext } from './variables'
 
 const slug = (s: string) =>
@@ -26,8 +26,10 @@ function resolveDoc(node: PMNode, ctx: RenderContext): PMNode {
 }
 
 /** Shows the filled-in document and downloads it as a PDF generated in the browser. Nothing is stored. */
-export function PdfPreview({ template, card, fields, onClose }: {
+export function PdfPreview({ template, card, fields, onClose, all }: {
   template: PdfTemplate | null; card: Card | null; fields: Field[]; onClose: () => void
+  /** Family: every person (holder first) → one PDF, one section per person; the preview shows the first */
+  all?: Card[] | null
 }) {
   const open = !!template && !!card
   const { t } = useTranslation()
@@ -36,17 +38,17 @@ export function PdfPreview({ template, card, fields, onClose }: {
       open={open}
       onClose={onClose}
       width="max-w-4xl"
-      title={<span className="flex flex-wrap items-baseline gap-x-2">{template?.name}<span className="text-sm font-normal text-slate-500">· {card?.title}</span></span>}
+      title={<span className="flex flex-wrap items-baseline gap-x-2">{template?.name}<span className="text-sm font-normal text-slate-500">· {all?.length ? t('family.people', { count: all.length }) : card?.title}</span></span>}
     >
-      {open ? <PreviewBody template={template!} card={card!} fields={fields} onClose={onClose} /> : <p>{t('common.loading')}</p>}
+      {open ? <PreviewBody template={template!} card={card!} fields={fields} onClose={onClose} all={all ?? null} /> : <p>{t('common.loading')}</p>}
     </Modal>
   )
 }
 
-function PreviewBody({ template, card, fields, onClose }: { template: PdfTemplate; card: Card; fields: Field[]; onClose: () => void }) {
+function PreviewBody({ template, card, fields, onClose, all }: { template: PdfTemplate; card: Card; fields: Field[]; onClose: () => void; all: Card[] | null }) {
   const { t, i18n } = useTranslation()
   // Snapshot when opened (callers pass fresh objects on every render)
-  const [snap] = useState(() => ({ template, card }))
+  const [snap] = useState(() => ({ template, card, all }))
   const ctx = useMemo<RenderContext>(() => ({ card: snap.card, fields, lang: snap.template.page?.lang ?? 'pt-BR' }), [snap, fields])
   const [busy, setBusy] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
@@ -83,11 +85,14 @@ function PreviewBody({ template, card, fields, onClose }: { template: PdfTemplat
   async function download() {
     setBusy(true)
     try {
-      const blob = await renderPdf(snap.template, ctx)
+      const lang = snap.template.page?.lang ?? 'pt-BR'
+      const blob = snap.all?.length
+        ? await renderPdfMany(snap.template, snap.all.map((c) => ({ card: c, fields, lang })))
+        : await renderPdf(snap.template, ctx)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${slug(snap.template.name)}-${slug(snap.card.title) || 'card'}.pdf`
+      a.download = `${slug(snap.template.name)}-${slug(snap.card.title) || 'card'}${snap.all?.length ? `-familia-${snap.all.length}` : ''}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()

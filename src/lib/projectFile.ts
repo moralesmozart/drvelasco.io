@@ -98,6 +98,7 @@ export function remapProject(file: ProjectFile, name: string) {
       description: f.description, required: f.required, options: f.options ?? [], show_on_card: f.show_on_card, position: f.position,
       conditions: (f.conditions ?? []).map((c) => ({ ...c, field_id: fd(c.field_id) })),
       translations: f.translations ?? {},
+      per_person: !!f.per_person,
     })),
     transitions: file.transitions
       .filter((t) => phaseIds.has(t.from_phase_id) && phaseIds.has(t.to_phase_id))
@@ -109,6 +110,8 @@ export function remapProject(file: ProjectFile, name: string) {
       id: cardIds.get(c.id)!, pipe_id: pipeId, phase_id: ph(c.phase_id), title: c.title, position: c.position,
       created_via: c.created_via, created_at: c.created_at, updated_at: c.updated_at, phase_entered_at: c.phase_entered_at,
       values: Object.fromEntries(Object.entries(c.values ?? {}).map(([k, v]) => [fd(k), v as FieldValue])),
+      family_of: c.family_of ? cardIds.get(c.family_of) ?? null : null,
+      relation: c.relation ?? null,
     })),
     events: (file.events ?? []).filter((e) => cardIds.has(e.card_id)).map((e) => {
       const p = { ...(e.payload ?? {}) } as Record<string, unknown>

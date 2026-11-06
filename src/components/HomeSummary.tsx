@@ -41,7 +41,7 @@ export function HomeSummary({ pipes }: { pipes: PipeSummary[] }) {
   const loaded = boards.map((b) => b.data).filter((b): b is Board => !!b)
   const [since] = useState(() => (user ? lastVisitSince(user.id) : Date.now()))
 
-  const allCards = loaded.flatMap((b) => b.cards.map((c) => ({ card: c, board: b })))
+  const allCards = loaded.flatMap((b) => b.cards.filter((c) => !c.family_of).map((c) => ({ card: c, board: b })))
   const today = startOfDay(new Date())
   const newToday = allCards.filter(({ card }) => new Date(card.created_at).getTime() >= today)
   const newSince = allCards.filter(({ card }) => new Date(card.created_at).getTime() >= since)
@@ -126,7 +126,7 @@ function Upcoming({ board }: { board: Board }) {
   const items = useMemo(() => {
     if (!field) return []
     return board.cards
-      .filter((c) => phaseIds.includes(c.phase_id))
+      .filter((c) => !c.family_of && phaseIds.includes(c.phase_id))
       .map((c) => ({ card: c, value: c.values[field.id] }))
       .filter((x): x is { card: Card; value: string } => typeof x.value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.value))
       .map((x) => ({ ...x, diff: daysUntil(x.value) }))

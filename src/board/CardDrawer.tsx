@@ -1,13 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  AlertCircle, ArrowRight, Check, ChevronDown, Clock, Download, FileText, Globe, History, Loader2, MoveRight, PenLine, Plus, Trash2, UserRound, X,
+  AlertCircle, ArrowRight, Check, ChevronDown, ChevronRight, Clock, Download, FileText, Globe, History, Link2, Loader2, MoveRight, PenLine, Plus, Trash2, UserRound, Users, X,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { ConfirmDialog, IconButton } from '../components/ui'
+import { Button, ConfirmDialog, IconButton, Input, Label, Modal } from '../components/ui'
+import { ageFrom, relationLabel, RELATIONS, withSharedValues } from '../lib/family'
 import { FieldInput } from '../forms/FieldInput'
 import { isVisible } from '../forms/logic'
 import { formatValue, timeSince } from '../lib/format'
@@ -23,9 +24,10 @@ interface Props {
   onClose: () => void
   onMoved: (cardId: string, phaseId: string) => Promise<void>
   onDeleted: () => void
+  onOpenCard: (c: Card) => void
 }
 
-export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) {
+export function CardDrawer({ board, card, onClose, onMoved, onDeleted, onOpenCard }: Props) {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const [values, setValues] = useState<Record<string, FieldValue>>(card.values)
@@ -39,9 +41,18 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
 
   const phase = board.phases.find((p) => p.id === card.phase_id)!
   const fieldsOf = (phaseId: string | null) => board.fields.filter((f) => f.phase_id === phaseId).sort((a, b) => a.position - b.position)
-  const startFields = fieldsOf(null)
-  const currentFields = fieldsOf(phase.id)
-  const otherPhases = board.phases.filter((p) => p.id !== phase.id && fieldsOf(p.id).length > 0)
+  // Family: a member keeps only its per-person answers; everything else lives on the holder
+  const holder = card.family_of ? board.cards.find((c) => c.id === card.family_of) : undefined
+  const isMember = !!card.family_of
+  const members = useMemo(() => board.cards.filter((c) => c.family_of === card.id).sort((a, b) => a.position - b.position), [board.cards, card.id])
+  const [pdfAll, setPdfAll] = useState(false)
+  const [adding, setAdding] = useState(false)
+
+  const startFields = fieldsOf(null).filter((f) => !isMember || f.per_person)
+  const sharedFields = isMember ? fieldsOf(null).filter((f) => !f.per_person && f.type !== 'info') : []
+  const currentFields = isMember ? [] : fieldsOf(phase.id)
+  const otherPhases = isMember ? [] : board.phases.filter((p) => p.id !== phase.id && fieldsOf(p.id).length > 0)
+  const dateField = board.fields.find((f) => f.phase_id === null && f.per_person && f.type === 'date')
 
   const events = useQuery({ queryKey: ['events', card.id], queryFn: () => repo.getCardEvents(card.id) })
   const templates = useQuery({ queryKey: ['templates', card.pipe_id], queryFn: () => repo.listTemplates(card.pipe_id) })
@@ -150,6 +161,20 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
         <SaveBadge state={saveState} />
         <IconButton label={t('common.close')} onClick={onClose}><X className="h-5 w-5" /></IconButton>
       </header>
+      {isMember && (
+        <div className="flex flex-wrap items-center gap-3 border-b border-violet-100 bg-violet-50 px-5 py-2.5 text-sm text-violet-800 sm:px-7">
+          <Users className="h-4 w-4 shrink-0" />
+          <span className="flex-1">
+            <span className="mr-1.5 rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide">{relationLabel(card.relation, t)}</span>
+            {t('family.memberOf', { name: holder?.title ?? '—' })}
+          </span>
+          {holder && (
+            <button onClick={() => onOpenCard(holder)} className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 font-medium text-violet-700 shadow-sm hover:bg-violet-100">
+              {t('family.openHolder')} <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_260px] lg:overflow-hidden">
         {/* left: start form + other phases + history */}
@@ -157,6 +182,28 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
           <Section title={t('builder.startForm')} subtitle={new Date(card.created_at).toLocaleString(i18n.language)} defaultOpen>
             <div className="space-y-6">{renderFields(startFields, false)}</div>
           </Section>
+          {!isMember && (members.length > 0 || startFieldsHavePerPerson(board.fields)) && (
+            <Section title={`${t('family.section')}${members.length ? ` · ${t('family.people', { count: members.length + (card.relation === 'contato' ? 0 : 1) })}` : ''}`} icon={<Users className="h-4 w-4 text-violet-600" />} defaultOpen={members.length > 0}>
+              <ul className="space-y-1.5">
+                {members.map((m) => {
+                  const age = dateField ? ageFrom(m.values[dateField.id]) : null
+                  return (
+                    <li key={m.id}>
+                      <button onClick={() => { void flush(); onOpenCard(m) }} className="group flex w-full items-center gap-2.5 rounded-xl border border-slate-200 px-3 py-2 text-left text-sm transition hover:border-violet-300 hover:bg-violet-50/50">
+                        <span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700">{relationLabel(m.relation, t)}</span>
+                        <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{m.title}</span>
+                        {age !== null && <span className="text-xs text-slate-400">{t('family.years', { count: age })}</span>}
+                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-violet-600" />
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+              <button onClick={() => setAdding(true)} className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50">
+                <Plus className="h-4 w-4" /> {t('family.addMember')}
+              </button>
+            </Section>
+          )}
           {otherPhases.map((p) => (
             <Section key={p.id} title={phaseLabel(p, i18n.language)} color={p.color} defaultOpen={fieldsOf(p.id).some((f) => values[f.id] !== undefined && values[f.id] !== null)}>
               <div className="space-y-6">{renderFields(fieldsOf(p.id), false)}</div>
@@ -169,6 +216,19 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
 
         {/* middle: current phase */}
         <section className="scroll-thin border-t border-slate-200 p-5 sm:p-7 lg:overflow-y-auto lg:border-l lg:border-t-0">
+          {isMember ? (
+            <>
+              <h3 className="mb-1 flex items-center gap-2 font-semibold text-slate-900"><Link2 className="h-4 w-4 text-violet-600" /> {t('family.sharedReadonly')}</h3>
+              <dl className="mt-4 space-y-4">
+                {sharedFields.filter((f) => holder && isVisible(f, withSharedValues(card, holder, board.fields))).map((f) => (
+                  <div key={f.id}>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{fieldText(f, i18n.language).label}</dt>
+                    <dd className="mt-0.5 whitespace-pre-line text-sm text-slate-700">{formatValue(f, holder?.values[f.id] ?? null, i18n.language) || '—'}</dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          ) : (<>
           <div className="mb-5 flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: phase.color }} />
             <h3 className="font-semibold text-slate-900">{t('card.currentPhase')}: {phaseLabel(phase, i18n.language)}</h3>
@@ -181,10 +241,14 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
               {t('card.noPhaseFields')}
             </p>
           )}
+          </>)}
         </section>
 
         {/* right: move + actions */}
         <aside className="scroll-thin border-t border-slate-200 bg-slate-50/70 p-5 lg:overflow-y-auto lg:border-l lg:border-t-0">
+          {isMember ? (
+            <p className="flex gap-2 rounded-xl bg-violet-50 p-3 text-sm text-violet-800"><Users className="mt-0.5 h-4 w-4 shrink-0" /> {t('family.movesWithFamily')}</p>
+          ) : (<>
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900"><MoveRight className="h-4 w-4" /> {t('card.moveTo')}</h3>
           <div className="space-y-2">
             {moveOptions.map((p) => (
@@ -211,19 +275,30 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
               </motion.div>
             )}
           </AnimatePresence>
+          </>)}
 
           <h3 className="mb-3 mt-8 flex items-center gap-2 text-sm font-semibold text-slate-900"><FileText className="h-4 w-4" /> {t('pdf.documents')}</h3>
           <div className="space-y-2">
             {(templates.data ?? []).map((tpl) => (
-              <button
-                key={tpl.id}
-                onClick={async () => { await flush(); setPdfTpl(tpl) }}
-                className="group flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:border-brand-300 hover:shadow-md"
-              >
-                <FileText className="h-4 w-4 shrink-0 text-brand-600" />
-                <span className="flex-1 truncate">{tpl.name}</span>
-                <Download className="h-4 w-4 text-slate-400 transition group-hover:text-brand-600" />
-              </button>
+              <div key={tpl.id} className="space-y-1.5">
+                <button
+                  onClick={async () => { await flush(); setPdfAll(false); setPdfTpl(tpl) }}
+                  className="group flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:border-brand-300 hover:shadow-md"
+                >
+                  <FileText className="h-4 w-4 shrink-0 text-brand-600" />
+                  <span className="flex-1 truncate">{tpl.name}</span>
+                  <Download className="h-4 w-4 text-slate-400 transition group-hover:text-brand-600" />
+                </button>
+                {members.length > 0 && (
+                  <button
+                    onClick={async () => { await flush(); setPdfAll(true); setPdfTpl(tpl) }}
+                    title={tpl.name}
+                    className="flex w-full items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:border-violet-400"
+                  >
+                    <Users className="h-3.5 w-3.5" /> {t('family.generateAll', { count: members.length + (card.relation === 'contato' ? 0 : 1) })}
+                  </button>
+                )}
+              </div>
             ))}
             {templates.data && templates.data.length === 0 && <p className="text-xs text-slate-400">{t('pdf.noTemplates')}</p>}
           </div>
@@ -238,12 +313,22 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
         </aside>
       </div>
 
-      <PdfPreview template={pdfTpl} card={pdfTpl ? { ...card, title, values } : null} fields={board.fields} onClose={() => setPdfTpl(null)} />
+      <PdfPreview
+        template={pdfTpl}
+        card={pdfTpl ? (isMember ? { ...card, title, values: withSharedValues({ ...card, values }, holder, board.fields) } : { ...card, title, values }) : null}
+        all={pdfTpl && pdfAll ? [
+          ...(card.relation === 'contato' ? [] : [{ ...card, title, values }]),
+          ...members.map((m) => ({ ...m, values: withSharedValues(m, { ...card, values }, board.fields) })),
+        ] : null}
+        fields={board.fields}
+        onClose={() => setPdfTpl(null)}
+      />
+      {adding && <AddMemberDialog holder={{ ...card, title, values }} titleFieldId={board.fields.find((f) => f.phase_id === null && f.type === 'short_text')?.id} onClose={() => setAdding(false)} onAdded={(m) => { setAdding(false); qc.invalidateQueries({ queryKey: ['board', card.pipe_id] }); toast.success(m.title) }} />}
       <ConfirmDialog
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         title={t('card.deleteTitle', { name: title })}
-        body={t('card.deleteBody')}
+        body={members.length ? t('family.deleteHolderBody', { count: members.length }) : t('card.deleteBody')}
         confirmLabel={t('common.delete')}
         onConfirm={async () => {
           pending.current = null
@@ -336,5 +421,53 @@ function Timeline({ events, loading, fieldName, phaseName, lang }: {
         )
       })}
     </ol>
+  )
+}
+
+const startFieldsHavePerPerson = (fields: Field[]) => fields.some((f) => f.phase_id === null && f.per_person)
+
+function AddMemberDialog({ holder, titleFieldId, onClose, onAdded }: { holder: Card; titleFieldId?: string; onClose: () => void; onAdded: (c: Card) => void }) {
+  const { t } = useTranslation()
+  const [rel, setRel] = useState<string>('filho')
+  const [other, setOther] = useState('')
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setBusy(true)
+    try {
+      const relation = rel === 'outro' && other.trim() ? `outro:${other.trim()}` : rel
+      onAdded(await repo.addFamilyMember(holder, relation, name.trim(), titleFieldId ? { [titleFieldId]: name.trim() } : {}))
+    } catch {
+      toast.error(t('common.error'))
+      setBusy(false)
+    }
+  }
+  return (
+    <Modal open onClose={onClose} title={t('family.addMember')}>
+      <form onSubmit={save} className="space-y-5">
+        <div>
+          <Label>{t('family.relation')}</Label>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {RELATIONS.map((r) => (
+              <button key={r} type="button" onClick={() => setRel(r)} aria-pressed={rel === r}
+                className={clsx('rounded-full border px-3 py-1 text-sm font-medium transition', rel === r ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 text-slate-700 hover:border-slate-300')}>
+                {t(`family.rel.${r}`)}
+              </button>
+            ))}
+          </div>
+          {rel === 'outro' && <Input className="mt-2" value={other} onChange={(e) => setOther(e.target.value)} placeholder={t('family.otherPlaceholder')} maxLength={40} />}
+        </div>
+        <div>
+          <Label htmlFor="fam-name">{t('family.name')}</Label>
+          <Input id="fam-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" loading={busy} disabled={!name.trim()}><Plus className="h-4 w-4" /> {t('family.addMember')}</Button>
+        </div>
+      </form>
+    </Modal>
   )
 }

@@ -1,5 +1,5 @@
 import type {
-  AttachmentValue, Board, Card, CardEvent, Field, PdfTemplate, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef,
+  AttachmentValue, Board, Card, CardEvent, FamilyMemberInput, Field, PdfTemplate, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef,
 } from './types'
 import { supabase, isSupabaseConfigured } from './supabase'
 import { demoRepo } from './demoRepo'
@@ -50,7 +50,12 @@ export interface Repo {
   /** Public (no login) */
   getPublicForm(slug: string): Promise<PublicFormDef | null>
   uploadPublicFile(slug: string, file: File): Promise<AttachmentValue>
-  submitPublicForm(slug: string, values: Record<string, FieldValue>, honeypot: string, captchaToken?: string): Promise<void>
+  submitPublicForm(
+    slug: string, values: Record<string, FieldValue>, honeypot: string, captchaToken?: string,
+    family?: { members: FamilyMemberInput[]; holderNeeds: boolean },
+  ): Promise<void>
+  /** Adds a member to a family request (internal). */
+  addFamilyMember(holder: Card, relation: string, title: string, values: Record<string, FieldValue>): Promise<Card>
 
   /** Called when a card arrives from the public form (any pipe). Returns unsubscribe. */
   onNewCard(cb: (card: Card) => void): () => void
@@ -66,7 +71,7 @@ function check<T>(res: { data: T; error: unknown }): T {
 
 const supabaseRepo: Repo = {
   async listPipes() {
-    const pipes = check(await supabase!.from('pipes').select('*, cards(count)').order('created_at')) as Array<
+    const pipes = check(await supabase!.from('pipes').select('*, cards(count)').is('cards.family_of', null).order('created_at')) as Array<
       Pipe & { cards: { count: number }[] }
     >
     return pipes.map(({ cards, ...p }) => ({ ...p, card_count: cards?.[0]?.count ?? 0 }))
@@ -207,7 +212,9 @@ const supabaseRepo: Repo = {
       if (rows.fields.length) check(await supabase!.from('fields').insert(rows.fields))
       if (rows.transitions.length) check(await supabase!.from('phase_transitions').insert(rows.transitions))
       if (rows.templates.length) check(await supabase!.from('pdf_templates').insert(rows.templates))
-      for (let i = 0; i < rows.cards.length; i += 200) check(await supabase!.from('cards').insert(rows.cards.slice(i, i + 200)))
+      // holders before members (members point to their holder)
+      const ordered = [...rows.cards].sort((a, b) => Number(!!a.family_of) - Number(!!b.family_of))
+      for (let i = 0; i < ordered.length; i += 200) check(await supabase!.from('cards').insert(ordered.slice(i, i + 200)))
       // history: send whole cards per call so each card's events stay together
       const byCard = new Map<string, typeof rows.events>()
       for (const e of rows.events) (byCard.get(e.card_id) ?? byCard.set(e.card_id, []).get(e.card_id)!).push(e)
@@ -267,20 +274,31 @@ const supabaseRepo: Repo = {
     if (error) throw error
     return { path, name: file.name, size: file.size, mime: file.type }
   },
-  async submitPublicForm(slug, values, honeypot, captchaToken) {
+  async submitPublicForm(slug, values, honeypot, captchaToken, family) {
+    const members = family?.members ?? []
+    const holderNeeds = family?.holderNeeds ?? true
     if (captchaToken) {
-      const { error } = await supabase!.functions.invoke('submit-form', { body: { slug, values, hp: honeypot, token: captchaToken } })
+      const { error } = await supabase!.functions.invoke('submit-form', { body: { slug, values, hp: honeypot, token: captchaToken, family: members, holderNeeds } })
       if (error) throw error
       return
     }
-    check(await supabase!.rpc('submit_public_form', { p_slug: slug, p_values: values, p_hp: honeypot }))
+    check(await supabase!.rpc('submit_public_form', { p_slug: slug, p_values: values, p_hp: honeypot, p_family: members, p_holder_needs: holderNeeds }))
+  },
+  async addFamilyMember(holder, relation, title, values) {
+    return check(
+      await supabase!
+        .from('cards')
+        .insert({ pipe_id: holder.pipe_id, phase_id: holder.phase_id, title, values, relation, family_of: holder.id, position: holder.position + 1 })
+        .select()
+        .single(),
+    ) as Card
   },
   onNewCard(cb) {
     const channel = supabase!
       .channel('new-cards')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cards' }, (p) => {
         const card = p.new as Card
-        if (card.created_via === 'public_form') cb(card)
+        if (card.created_via === 'public_form' && !card.family_of) cb(card)
       })
       .subscribe()
     return () => { supabase!.removeChannel(channel) }

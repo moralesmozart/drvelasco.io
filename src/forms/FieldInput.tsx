@@ -25,11 +25,13 @@ interface Props {
   onOpenFile?: (file: AttachmentValue) => void
   /** Internal views: show a WhatsApp shortcut under phone fields. */
   showWhatsApp?: boolean
+  /** Keeps ids unique when the same field is shown more than once (family members) */
+  idPrefix?: string
 }
 
-export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile, showWhatsApp }: Props) {
+export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile, showWhatsApp, idPrefix }: Props) {
   const { t, i18n } = useTranslation()
-  const id = `f-${field.id}`
+  const id = idPrefix ? `f-${idPrefix}-${field.id}` : `f-${field.id}`
   const txt = fieldText(field, i18n.language)
   const describedBy = [txt.description && `${id}-d`, error && `${id}-e`].filter(Boolean).join(' ') || undefined
 

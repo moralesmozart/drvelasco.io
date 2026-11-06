@@ -24,7 +24,7 @@ export function positionAt(list: Card[], index: number) {
 
 export function groupByPhase(cards: Card[], phaseIds: string[]) {
   const map: Record<string, Card[]> = Object.fromEntries(phaseIds.map((id) => [id, []]))
-  for (const c of [...cards].sort((a, b) => a.position - b.position)) (map[c.phase_id] ??= []).push(c)
+  for (const c of [...cards].sort((a, b) => a.position - b.position)) if (!c.family_of) (map[c.phase_id] ??= []).push(c) // members ride inside their holder
   return map
 }
 

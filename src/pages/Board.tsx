@@ -9,7 +9,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { CardContent } from '../board/CardTile'
+import { CardContent, FamilyContext } from '../board/CardTile'
+import { membersByHolder } from '../lib/family'
 import { DeletePhaseDialog, PhaseDialog } from '../board/PhaseDialogs'
 import { PhaseColumn } from '../board/PhaseColumn'
 import { allowedTargets, canMove, groupByPhase, missingRequired, positionAt } from '../board/rules'
@@ -69,16 +70,17 @@ export default function Board() {
   const startFields = useMemo(() => (data?.fields ?? []).filter((f) => f.phase_id === null), [data])
   const phaseName = (id: string) => { const p = phases.find((x) => x.id === id); return p ? phaseLabel(p, i18n.language) : '' }
 
+  const familyMembers = useMemo(() => membersByHolder(data?.cards ?? []), [data])
+  const family = useMemo(() => ({ members: familyMembers, open: (c: Card) => setOpenCard(c) }), [familyMembers]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return byPhase
+    const hit = (c: Card) => [c.title, ...Object.values(c.values).flat()].some((v) => String(v ?? '').toLowerCase().includes(q))
     return Object.fromEntries(
-      Object.entries(byPhase).map(([k, list]) => [
-        k,
-        list.filter((c) => [c.title, ...Object.values(c.values).flat()].some((v) => String(v ?? '').toLowerCase().includes(q))),
-      ]),
+      Object.entries(byPhase).map(([k, list]) => [k, list.filter((c) => hit(c) || (familyMembers.get(c.id) ?? []).some(hit))]),
     )
-  }, [byPhase, query])
+  }, [byPhase, query, familyMembers])
 
   /* ───────── drag & drop ───────── */
   const sensors = useSensors(
@@ -252,6 +254,7 @@ export default function Board() {
       </div>
 
       <main className="scroll-thin flex-1 overflow-x-auto overflow-y-hidden">
+        <FamilyContext.Provider value={family}>
         <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => { setActive(null); refresh() }}>
           <div className="flex h-full items-start gap-4 p-4 sm:p-6">
             <SortableContext items={phases.map((p) => `phase:${p.id}`)} strategy={horizontalListSortingStrategy}>
@@ -291,6 +294,7 @@ export default function Board() {
             )}
           </DragOverlay>
         </DndContext>
+        </FamilyContext.Provider>
       </main>
 
       <PhaseDialog
@@ -335,9 +339,11 @@ export default function Board() {
               transition={{ type: 'spring', stiffness: 380, damping: 34 }}
             >
               <CardDrawer
+                key={openCard.id}
                 board={data}
                 card={openCard}
                 onClose={() => setOpenCard(null)}
+                onOpenCard={setOpenCard}
                 onDeleted={() => { setOpenCard(null); refresh(); toast.success(t('card.deleted')) }}
                 onMoved={async (cardId, phaseId) => {
                   const max = Math.max(0, ...data.cards.filter((c) => c.phase_id === phaseId).map((c) => c.position))

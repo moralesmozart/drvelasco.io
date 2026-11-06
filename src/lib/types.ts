@@ -46,6 +46,8 @@ export interface Field {
   show_on_card: boolean
   position: number
   translations?: { es?: { label?: string; description?: string | null; options?: string[] } }
+  /** Repeat this start-form question for each family member */
+  per_person?: boolean
 }
 
 export interface AttachmentValue {
@@ -68,6 +70,15 @@ export interface Card {
   phase_entered_at: string
   created_at: string
   updated_at: string
+  /** Member of a family request: the holder card's id */
+  family_of?: string | null
+  /** Member: filha | filho | esposa | esposo | mae | pai | outro:<text>. Holder: 'contato' when only the contact person */
+  relation?: string | null
+}
+
+export interface FamilyMemberInput {
+  relation: string
+  values: Record<string, FieldValue>
 }
 
 export interface Transition {

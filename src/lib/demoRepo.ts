@@ -1,5 +1,5 @@
 import type { Repo } from './repo'
-import type { Board, Card, CardEvent, Field, PdfTemplate, Phase, Pipe, PublicFormDef, Transition } from './types'
+import type { Board, Card, CardEvent, Field, FieldValue, PdfTemplate, Phase, Pipe, PublicFormDef, Transition } from './types'
 import { DEFAULT_PHASES } from './defaults'
 
 /**
@@ -16,7 +16,7 @@ interface DemoDB {
   templates?: PdfTemplate[]
 }
 
-const KEY = 'drvelasco-demo-v5'
+const KEY = 'drvelasco-demo-v6'
 const uid = () => crypto.randomUUID()
 const now = () => new Date().toISOString()
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString()
@@ -63,10 +63,12 @@ function seed(): DemoDB {
   const notes = { ...f('Notas internas', 'long_text', 0), phase_id: phases[1].id }
   const pay = { ...f('Forma de pagamento', 'checklist', 1, { required: true, options: ['Transferência', 'Cartão', 'Outro'] }), phase_id: phases[1].id }
   const value = { ...f('Valor', 'currency', 2), phase_id: phases[1].id }
-  const fields = [name, doc, due, phone, email, topics, other, files, contact, agree, notes, pay, value]
+  const birth = f('Data de nascimento', 'date', 1.5, { per_person: true })
+  for (const pf of [name, doc, files]) pf.per_person = true
+  const fields = [name, doc, birth, due, phone, email, topics, other, files, contact, agree, notes, pay, value]
   const es: Array<[Field, string, string[]?, string?]> = [
     [name, 'Nombre completo'], [doc, 'Número de documento'], [due, 'Fecha deseada'],
-    [phone, 'Teléfono (WhatsApp)', undefined, 'Con código de país. Solo lo usaremos para la atención.'], [email, 'Correo electrónico'],
+    [birth, 'Fecha de nacimiento'], [phone, 'Teléfono (WhatsApp)', undefined, 'Con código de país. Solo lo usaremos para la atención.'], [email, 'Correo electrónico'],
     [topics, '¿Qué servicios necesitas?', ['Consultoría', 'Documentación', 'Traducción', 'Otro']],
     [other, 'Describe el otro servicio'], [files, 'Adjuntos', undefined, 'Opcional. Imágenes o PDF, hasta 10 MB.'],
     [contact, '¿Cómo prefieres seguir?', ['Videollamada', 'Teléfono', 'Solo por mensaje']],
@@ -94,6 +96,14 @@ function seed(): DemoDB {
     position: (i + 1) * 1000, created_via: 'public_form', phase_entered_at: daysAgo(d),
     created_at: daysAgo(d + 3), updated_at: daysAgo(d),
   }))
+  // a demo family: Juliana with two children
+  const holder = cards.find((c) => c.title === 'Juliana Prado Campos')!
+  ;[['Ana Prado Campos', 'DOC647383', '2017-05-12', 'filha'], ['Pedro Prado Campos', 'DOC647384', '2020-09-03', 'filho']].forEach(([n, d, b, rel], i) => {
+    cards.push({
+      ...holder, id: uid(), title: n, values: { [name.id]: n, [doc.id]: d, [birth.id]: b }, position: holder.position + i + 1,
+      family_of: holder.id, relation: rel,
+    })
+  })
   const [inbox, doing, pending, paidA, paidB, done] = phases.map((p) => p.id)
   const transitions: Transition[] = [
     [inbox, doing], [doing, pending], [doing, paidA], [doing, paidB], [doing, done],
@@ -143,7 +153,7 @@ window.addEventListener('storage', (e) => {
   const before = new Set(db.cards.map((c) => c.id))
   db = load()
   listeners.forEach((l) => l())
-  db.cards.filter((c) => !before.has(c.id) && c.created_via === 'public_form').forEach((c) => newCardListeners.forEach((l) => l(c)))
+  db.cards.filter((c) => !before.has(c.id) && c.created_via === 'public_form' && !c.family_of).forEach((c) => newCardListeners.forEach((l) => l(c)))
 })
 
 function load(): DemoDB {
@@ -170,7 +180,7 @@ export function resetDemo() {
 
 export const demoRepo: Repo = {
   async listPipes() {
-    return delay(db.pipes.map((p) => ({ ...p, card_count: db.cards.filter((c) => c.pipe_id === p.id).length })))
+    return delay(db.pipes.map((p) => ({ ...p, card_count: db.cards.filter((c) => c.pipe_id === p.id && !c.family_of).length })))
   },
   async createPipe(input) {
     const pipe: Pipe = { ...input, id: uid(), form_slug: uid().slice(0, 8), form_settings: {}, created_at: now() }
@@ -249,6 +259,12 @@ export const demoRepo: Repo = {
   async moveCard(cardId, phaseId, position) {
     const before = db.cards.find((c) => c.id === cardId)
     if (before && before.phase_id !== phaseId) logEvent(cardId, 'moved', { from: before.phase_id, to: phaseId })
+    // family members follow their holder
+    for (const m of db.cards.filter((c) => c.family_of === cardId && c.phase_id !== phaseId)) {
+      logEvent(m.id, 'moved', { from: m.phase_id, to: phaseId })
+      m.phase_id = phaseId
+      m.phase_entered_at = now()
+    }
     db.cards = db.cards.map((c) =>
       c.id === cardId
         ? { ...c, phase_id: phaseId, position, phase_entered_at: c.phase_id === phaseId ? c.phase_entered_at : now() }
@@ -369,7 +385,17 @@ export const demoRepo: Repo = {
     await new Promise((r) => setTimeout(r, 400))
     return { path: `incoming/${uid()}`, name: file.name, size: file.size, mime: file.type }
   },
-  async submitPublicForm(slug, values, honeypot) {
+  async addFamilyMember(holder, relation, title, values) {
+    const card: Card = {
+      id: uid(), pipe_id: holder.pipe_id, phase_id: holder.phase_id, title, values, position: holder.position + 1,
+      created_via: 'internal', phase_entered_at: now(), created_at: now(), updated_at: now(), family_of: holder.id, relation,
+    }
+    db.cards.push(card)
+    logEvent(card.id, 'created', { phase_id: holder.phase_id, via: 'internal' })
+    save()
+    return delay(card)
+  },
+  async submitPublicForm(slug, values, honeypot, _captcha, family) {
     if (honeypot) return
     const pipe = db.pipes.find((p) => p.form_slug === slug)
     if (!pipe) throw new Error('form_not_found')
@@ -383,7 +409,22 @@ export const demoRepo: Repo = {
       id: uid(), pipe_id: pipe.id, phase_id: first.id, title, values, position: max + 1000,
       created_via: 'public_form', phase_entered_at: now(), created_at: now(), updated_at: now(),
     })
-    logEvent(db.cards[db.cards.length - 1].id, 'created', { phase_id: first.id, via: 'public_form' })
+    const holder = db.cards[db.cards.length - 1]
+    logEvent(holder.id, 'created', { phase_id: first.id, via: 'public_form' })
+    if (family?.members.length) {
+      if (!family.holderNeeds) holder.relation = 'contato'
+      const perPerson = new Set(db.fields.filter((f) => f.pipe_id === pipe.id && f.phase_id === null && f.per_person).map((f) => f.id))
+      family.members.forEach((m, i) => {
+        const vals = Object.fromEntries(Object.entries(m.values).filter(([k]) => perPerson.has(k))) as Record<string, FieldValue>
+        const card: Card = {
+          id: uid(), pipe_id: pipe.id, phase_id: first.id, title: String((titleField && vals[titleField.id]) || 'Novo card'), values: vals,
+          position: holder.position + i + 1, created_via: 'public_form', phase_entered_at: now(), created_at: now(), updated_at: now(),
+          family_of: holder.id, relation: m.relation,
+        }
+        db.cards.push(card)
+        logEvent(card.id, 'created', { phase_id: first.id, via: 'public_form' })
+      })
+    }
     save()
   },
   onNewCard(cb) {

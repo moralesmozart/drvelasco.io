@@ -102,3 +102,18 @@ export async function renderPdf(tpl: Pick<PdfTemplate, 'content' | 'page' | 'nam
   pdfMake.addVirtualFileSystem(vfs)
   return pdfMake.createPdf(toDocDefinition(tpl, ctx)).getBlob()
 }
+
+/** One PDF with the same template filled once per person, each on its own page(s). */
+export async function renderPdfMany(tpl: Pick<PdfTemplate, 'content' | 'page' | 'name'>, ctxs: RenderContext[]): Promise<Blob> {
+  const [{ default: pdfMake }, { default: vfs }] = await Promise.all([
+    import('pdfmake/build/pdfmake'),
+    import('pdfmake/build/vfs_fonts'),
+  ])
+  pdfMake.addVirtualFileSystem(vfs)
+  const defs = ctxs.map((c) => toDocDefinition(tpl, c))
+  const content = defs.flatMap((d, i) => [
+    ...(i > 0 ? [{ text: '', pageBreak: 'before' as const }] : []),
+    ...((d.content as unknown[]) ?? []),
+  ])
+  return pdfMake.createPdf({ ...defs[0], content: content as TDocumentDefinitions['content'] }).getBlob()
+}

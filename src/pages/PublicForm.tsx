@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CheckCircle2, FileQuestion, Send } from 'lucide-react'
+import { ArrowLeftRight, CheckCircle2, FileQuestion, Send, User, Users } from 'lucide-react'
 import { FormHero } from '../forms/FormHero'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { LangSwitch } from '../components/Layout'
-import { Button, Spinner } from '../components/ui'
+import { Button, Spinner, Toggle } from '../components/ui'
+import { FamilyChoice, FamilyMembers, memberErrors, memberRelation, memberScope, newMember } from '../forms/Family'
+import type { MemberDraft } from '../forms/Family'
 import { FieldInput } from '../forms/FieldInput'
 import { isVisible, validate, visibleValues } from '../forms/logic'
 import { Turnstile } from '../forms/Turnstile'
@@ -30,8 +32,21 @@ export default function PublicForm() {
   const [captchaReset, setCaptchaReset] = useState(0)
   const [captchaMissing, setCaptchaMissing] = useState(false)
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [mode, setMode] = useState<'choose' | 'one' | 'family'>('choose')
+  const [holderNeeds, setHolderNeeds] = useState(true)
+  const [members, setMembers] = useState<MemberDraft[]>([])
+  const [familyMsg, setFamilyMsg] = useState<string | null>(null)
 
-  const fields = useMemo(() => data?.fields ?? [], [data])
+  const allFields = useMemo(() => data?.fields ?? [], [data])
+  const perPerson = useMemo(() => allFields.filter((f) => f.per_person), [allFields])
+  const hasFamily = perPerson.length > 0
+  const titleId = allFields.find((f) => f.type === 'short_text')?.id
+  const step = hasFamily ? mode : 'one'
+  // contact-only holder: hide their per-person questions (except the name)
+  const fields = useMemo(
+    () => (step === 'family' && !holderNeeds ? allFields.filter((f) => !f.per_person || f.id === titleId) : allFields),
+    [allFields, step, holderNeeds, titleId],
+  )
   const rawSettings = data?.pipe.settings ?? {}
   const settings = { ...rawSettings, ...formText(rawSettings, i18n.language) }
   const bg = settings.brand_color || '#8bbcb4'
@@ -58,10 +73,29 @@ export default function PublicForm() {
       document.getElementById(`f-${first.id}`)?.closest('[data-field]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
+    let family: Parameters<typeof repo.submitPublicForm>[4]
+    if (step === 'family') {
+      setFamilyMsg(null)
+      if (!members.length) { setFamilyMsg(t('family.needOne')); document.getElementById('family')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return }
+      const bad = members.find((m) => Object.keys(memberErrors(m, perPerson, values)).length)
+      if (bad) {
+        setMembers(members.map((m) => (m.key === bad.key ? { ...m, open: true, tried: true } : m)))
+        setFamilyMsg(t('family.fixMembers'))
+        setTimeout(() => document.getElementById(`m-${bad.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
+        return
+      }
+      family = {
+        holderNeeds,
+        members: members.map((m) => {
+          const vis = visibleValues(perPerson, memberScope(m, perPerson, values))
+          return { relation: memberRelation(m), values: Object.fromEntries(Object.entries(vis).filter(([k]) => perPerson.some((f) => f.id === k))) }
+        }),
+      }
+    }
     if (useCaptcha && !captcha) { setCaptchaMissing(true); return }
     setState('sending')
     try {
-      await repo.submitPublicForm(slug, visibleValues(fields, values), hp, useCaptcha ? captcha ?? undefined : undefined)
+      await repo.submitPublicForm(slug, visibleValues(fields, values), hp, useCaptcha ? captcha ?? undefined : undefined, family)
       setState('sent')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
@@ -86,6 +120,8 @@ export default function PublicForm() {
 
   const visibleFields = fields.filter((f) => isVisible(f, values))
   const errorCount = Object.keys(errors).length
+  const people = step === 'family' ? members.length + (holderNeeds ? 1 : 0) : 1
+  const reset = () => { setValues({}); setErrors({}); setTouched(false); setMembers([]); setHolderNeeds(true); setFamilyMsg(null); setMode('choose'); setState('idle') }
 
   return (
     <div className="min-h-screen px-4 py-6 sm:py-12" style={{ background: bg }}>
@@ -105,12 +141,35 @@ export default function PublicForm() {
                 </motion.div>
                 <h2 className="mt-4 text-xl font-semibold">{t('forms.sentTitle')}</h2>
                 <p className="mx-auto mt-2 max-w-sm text-slate-600">{settings.success_message || t('forms.sentDefault')}</p>
-                <Button variant="secondary" className="mt-6" onClick={() => { setValues({}); setErrors({}); setTouched(false); setState('idle') }}>
+                <Button variant="secondary" className="mt-6" onClick={reset}>
                   {t('forms.sendAnother')}
                 </Button>
               </motion.div>
+            ) : step === 'choose' ? (
+              <motion.div key="choose" exit={{ opacity: 0 }}>
+                <FamilyChoice onPick={(m) => { setMode(m); if (m === 'family' && !members.length) setMembers([newMember()]) }} />
+              </motion.div>
             ) : (
-              <motion.form key="form" noValidate onSubmit={submit} className="space-y-7" exit={{ opacity: 0 }}>
+              <motion.form key="form" noValidate onSubmit={submit} className="space-y-7" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                {hasFamily && (
+                  <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                    <span className="flex items-center gap-2 font-medium text-slate-700">
+                      {step === 'family' ? <Users className="h-4 w-4 text-violet-600" /> : <User className="h-4 w-4 text-brand-600" />}
+                      {step === 'family' ? t('family.withFamily') : t('family.onlyMe')}
+                    </span>
+                    <button type="button" onClick={() => setMode('choose')} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-brand-700 hover:bg-white">
+                      <ArrowLeftRight className="h-3.5 w-3.5" /> {t('family.change')}
+                    </button>
+                  </div>
+                )}
+                {step === 'family' && (
+                  <div className="space-y-4">
+                    <h2 className="text-lg font-semibold text-slate-900">{t('family.yourData')}</h2>
+                    <div className="rounded-xl border border-slate-200 px-4 py-3">
+                      <Toggle checked={holderNeeds} onChange={setHolderNeeds} label={t('family.holderNeeds')} hint={t('family.holderNeedsHint')} />
+                    </div>
+                  </div>
+                )}
                 {/* honeypot: hidden from people, bots fill it */}
                 <div aria-hidden className="absolute left-[-9999px] h-px w-px overflow-hidden">
                   <label>Website<input tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)} /></label>
@@ -137,6 +196,24 @@ export default function PublicForm() {
                   ))}
                 </AnimatePresence>
 
+                {step === 'family' && (
+                  <section id="family" className="space-y-3 border-t border-slate-100 pt-6">
+                    <div>
+                      <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900"><Users className="h-5 w-5 text-violet-600" /> {t('family.yourFamily')}</h2>
+                      <p className="text-sm text-slate-500">{t('family.yourFamilyHint')}</p>
+                    </div>
+                    <FamilyMembers
+                      fields={perPerson}
+                      holderValues={values}
+                      members={members}
+                      onChange={(m) => { setMembers(m); setFamilyMsg(null) }}
+                      onUpload={(file) => repo.uploadPublicFile(slug, file)}
+                      showErrors={touched}
+                    />
+                    {familyMsg && <p role="alert" className="text-sm text-rose-600">{familyMsg}</p>}
+                  </section>
+                )}
+
                 <div className="space-y-3 border-t border-slate-100 pt-6">
                   {touched && errorCount > 0 && (
                     <p role="alert" className="text-sm text-rose-600">{t('forms.fixErrors', { count: errorCount })}</p>
@@ -145,7 +222,7 @@ export default function PublicForm() {
                   {captchaMissing && <p role="alert" className="text-sm text-rose-600">{t('forms.captcha')}</p>}
                   {state === 'error' && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{t('forms.sendFailed')}</p>}
                   <Button type="submit" loading={state === 'sending'} className="h-12 w-full text-base sm:w-auto sm:px-8">
-                    <Send className="h-4 w-4" /> {settings.submit_label || t('forms.submit')}
+                    <Send className="h-4 w-4" /> {step === 'family' ? t('family.submitN', { count: people }) : settings.submit_label || t('forms.submit')}
                   </Button>
                   <p className="text-xs text-slate-400">{t('forms.privacy')}</p>
                 </div>
