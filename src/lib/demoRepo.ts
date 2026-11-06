@@ -14,7 +14,7 @@ interface DemoDB {
   transitions: Transition[]
 }
 
-const KEY = 'pipe-lite-demo-v1'
+const KEY = 'drvelasco-demo-v1'
 const uid = () => crypto.randomUUID()
 const now = () => new Date().toISOString()
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString()

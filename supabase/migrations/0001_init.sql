@@ -1,4 +1,4 @@
--- Pipe-lite: initial schema
+-- drvelasco: initial schema
 -- Run once in Supabase → SQL Editor. Safe to read top to bottom.
 
 create extension if not exists pgcrypto;

@@ -16,7 +16,7 @@ interface AuthState {
 }
 
 const AuthContext = createContext<AuthState | null>(null)
-const DEMO_USER: AuthUser = { id: 'demo', email: 'demo@pipe-lite.app', name: 'Demo' }
+const DEMO_USER: AuthUser = { id: 'demo', email: 'demo@example.com', name: 'Demo' }
 
 function nameFromEmail(email: string) {
   const base = email.split('@')[0].replace(/[._-]+/g, ' ')

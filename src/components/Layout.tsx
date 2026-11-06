@@ -28,7 +28,7 @@ export function Logo() {
   return (
     <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight text-slate-900">
       <img src="./favicon.svg" alt="" className="h-7 w-7" />
-      Pipe Lite
+      drvelasco
     </Link>
   )
 }

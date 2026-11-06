@@ -23,7 +23,7 @@ export default function Login() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(178,224,216,0.35),transparent_55%)]" />
         <div className="relative flex h-full flex-col justify-between p-12 text-white">
           <div className="flex items-center gap-2 text-lg font-semibold">
-            <img src="./favicon.svg" alt="" className="h-8 w-8 rounded-lg ring-1 ring-white/30" /> Pipe Lite
+            <img src="./favicon.svg" alt="" className="h-8 w-8 rounded-lg ring-1 ring-white/30" /> drvelasco
           </div>
           <BoardIllustration />
           <p className="max-w-sm text-brand-100">{t('auth.subtitle')}</p>
