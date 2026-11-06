@@ -326,6 +326,18 @@ export const demoRepo: Repo = {
     save()
     return delay(cards.length)
   },
+  async restoreProject(rows) {
+    const slugTaken = db.pipes.some((p) => p.form_slug === rows.pipe.form_slug)
+    db.pipes.push({ ...rows.pipe, form_slug: slugTaken ? uid().slice(0, 8) : rows.pipe.form_slug, created_at: now() } as Pipe)
+    db.phases.push(...(rows.phases as Phase[]))
+    db.fields.push(...(rows.fields as Field[]))
+    db.transitions.push(...rows.transitions)
+    ;(db.templates ??= []).push(...rows.templates.map((t) => ({ ...t, updated_at: now() }) as PdfTemplate))
+    db.cards.push(...(rows.cards as Card[]))
+    ;(db.events ??= []).push(...rows.events.map((e) => ({ ...e, id: uid() }) as CardEvent))
+    save()
+    return delay(rows.pipe.id)
+  },
   async listTemplates(pipeId) {
     return delay((db.templates ?? []).filter((t) => t.pipe_id === pipeId))
   },

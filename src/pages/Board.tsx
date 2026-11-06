@@ -17,6 +17,7 @@ import { Header, PipeIcon } from '../components/Layout'
 import { Button, Input, Label, Menu, Modal, Spinner } from '../components/ui'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CardDrawer } from '../board/CardDrawer'
+import { exportIcons, exportProject } from '../components/ProjectTransfer'
 import { repo } from '../lib/repo'
 import { fieldText, phaseLabel } from '../lib/localize'
 import type { Card, Phase } from '../lib/types'
@@ -243,6 +244,8 @@ export default function Board() {
             items={[
               { label: t('board.publicForm') + ' · ' + t('board.copyLink'), icon: <Link2 className="h-4 w-4" />, onClick: () => { void navigator.clipboard.writeText(formUrl).then(() => toast.success(t('board.linkCopied'))) } },
               { label: t('importer.title'), icon: <Upload className="h-4 w-4" />, onClick: () => navigate(`/pipe/${pipeId}/import`) },
+              { label: t('transfer.exportBackup'), icon: <exportIcons.backup className="h-4 w-4" />, onClick: () => exportProject(pipeId, 'backup', t) },
+              { label: t('transfer.exportStructure'), icon: <exportIcons.structure className="h-4 w-4" />, onClick: () => exportProject(pipeId, 'structure', t) },
             ]}
           />
         </div>

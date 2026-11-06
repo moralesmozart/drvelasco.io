@@ -19,7 +19,7 @@ const ptBR = {
     notAdmin: 'Sua conta não tem acesso a este espaço.', logout: 'Sair', demoEnter: 'Entrar no modo demo',
   },
   home: {
-    greeting: 'Olá, {{name}}', subtitle: 'Seus pipes', newPipe: 'Criar pipe', cards_one: '{{count}} card',
+    greeting: 'Olá, {{name}}', subtitle: 'Seus pipes', newPipe: 'Criar pipe', cards_zero: '{{count}} cards', cards_one: '{{count}} card',
     cards_other: '{{count}} cards', empty: 'Nenhum pipe ainda. Crie o primeiro!',
     pipeName: 'Nome do pipe', color: 'Cor', icon: 'Ícone',
     deletePipe: 'Excluir pipe', deletePipeTitle: 'Excluir "{{name}}"?',
@@ -111,6 +111,14 @@ const ptBR = {
     done_one: '{{count}} card importado!', done_other: '{{count}} cards importados!', readError: 'Não foi possível ler este arquivo.', back: 'Voltar ao kanban',
   },
   alerts: { newCard: 'Nova solicitação: {{name}}', open: 'Abrir', enable: 'Ativar alertas no navegador', enabled: 'Alertas do navegador ativados' },
+  transfer: {
+    exportBackup: 'Exportar backup completo', exportStructure: 'Exportar estrutura (sem cards)', exporting: 'Preparando arquivo…',
+    backupDone: 'Backup baixado ({{count}} cards). Guarde o arquivo em local seguro.', structureDone: 'Estrutura baixada.',
+    import: 'Importar projeto', importTitle: 'Importar projeto', invalid: 'Este arquivo não é uma exportação válida.',
+    kindBackup: 'Backup completo', kindStructure: 'Só a estrutura', phases: 'fases', fields: 'campos', templates: 'modelos PDF', cards: 'cards',
+    copy: 'cópia', restore: 'Criar projeto', restored: 'Projeto importado!', restoreFailed: 'Não foi possível importar. Nada foi alterado.',
+    newPipeNote: 'Será criado um novo pipe. Os pipes existentes não são alterados. Anexos continuam apontando para os arquivos guardados na plataforma.',
+  },
   types: {
     short_text: 'Texto curto', long_text: 'Texto longo', email: 'E-mail', phone: 'Telefone', date: 'Data', number: 'Número',
     currency: 'Moeda', radio: 'Escolha única', checklist: 'Múltipla escolha', select: 'Lista suspensa', attachment: 'Anexo', info: 'Texto informativo',
@@ -137,7 +145,7 @@ const es: Dict = {
     notAdmin: 'Tu cuenta no tiene acceso a este espacio.', logout: 'Salir', demoEnter: 'Entrar en modo demo',
   },
   home: {
-    greeting: 'Hola, {{name}}', subtitle: 'Tus pipes', newPipe: 'Crear pipe', cards_one: '{{count}} tarjeta',
+    greeting: 'Hola, {{name}}', subtitle: 'Tus pipes', newPipe: 'Crear pipe', cards_zero: '{{count}} tarjetas', cards_one: '{{count}} tarjeta',
     cards_other: '{{count}} tarjetas', empty: 'Aún no hay pipes. ¡Crea el primero!',
     pipeName: 'Nombre del pipe', color: 'Color', icon: 'Icono',
     deletePipe: 'Eliminar pipe', deletePipeTitle: '¿Eliminar "{{name}}"?',
@@ -229,6 +237,14 @@ const es: Dict = {
     done_one: '¡{{count}} tarjeta importada!', done_other: '¡{{count}} tarjetas importadas!', readError: 'No se pudo leer este archivo.', back: 'Volver al kanban',
   },
   alerts: { newCard: 'Nueva solicitud: {{name}}', open: 'Abrir', enable: 'Activar alertas en el navegador', enabled: 'Alertas del navegador activadas' },
+  transfer: {
+    exportBackup: 'Exportar copia completa', exportStructure: 'Exportar estructura (sin tarjetas)', exporting: 'Preparando archivo…',
+    backupDone: 'Copia descargada ({{count}} tarjetas). Guarda el archivo en un lugar seguro.', structureDone: 'Estructura descargada.',
+    import: 'Importar proyecto', importTitle: 'Importar proyecto', invalid: 'Este archivo no es una exportación válida.',
+    kindBackup: 'Copia completa', kindStructure: 'Solo la estructura', phases: 'fases', fields: 'campos', templates: 'plantillas PDF', cards: 'tarjetas',
+    copy: 'copia', restore: 'Crear proyecto', restored: '¡Proyecto importado!', restoreFailed: 'No se pudo importar. No se cambió nada.',
+    newPipeNote: 'Se creará un pipe nuevo. Los pipes existentes no cambian. Los adjuntos siguen apuntando a los archivos guardados en la plataforma.',
+  },
   types: {
     short_text: 'Texto corto', long_text: 'Texto largo', email: 'Correo', phone: 'Teléfono', date: 'Fecha', number: 'Número',
     currency: 'Moneda', radio: 'Opción única', checklist: 'Opción múltiple', select: 'Lista desplegable', attachment: 'Adjunto', info: 'Texto informativo',

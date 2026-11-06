@@ -4,6 +4,7 @@ import type {
 import { supabase, isSupabaseConfigured } from './supabase'
 import { demoRepo } from './demoRepo'
 import { DEFAULT_PHASES } from './defaults'
+import type { RestoreRows } from './projectFile'
 
 /** Everything the UI needs from storage. Two implementations: Supabase and an in-browser demo. */
 export interface Repo {
@@ -39,6 +40,8 @@ export interface Repo {
   listPipeEvents(pipeId: string): Promise<CardEvent[]>
   /** Bulk insert (import). Returns how many were created. */
   importCards(pipeId: string, cards: Array<Pick<Card, 'phase_id' | 'title' | 'values'> & { created_at?: string }>): Promise<number>
+  /** Creates a new pipe from remapped export rows. Returns the new pipe id. */
+  restoreProject(rows: RestoreRows): Promise<string>
   listTemplates(pipeId: string): Promise<PdfTemplate[]>
   createTemplate(pipeId: string, input: Pick<PdfTemplate, 'name' | 'content' | 'page'>): Promise<PdfTemplate>
   updateTemplate(id: string, patch: Partial<Pick<PdfTemplate, 'name' | 'content' | 'page'>>): Promise<void>
@@ -190,6 +193,37 @@ const supabaseRepo: Repo = {
       n += chunk.length
     }
     return n
+  },
+  async restoreProject(rows) {
+    // Keep the original public link when it's free, otherwise get a new one
+    const { error: e1 } = await supabase!.from('pipes').insert(rows.pipe)
+    if (e1) {
+      const { form_slug: _s, ...rest } = rows.pipe
+      void _s
+      check(await supabase!.from('pipes').insert(rest))
+    }
+    try {
+      if (rows.phases.length) check(await supabase!.from('phases').insert(rows.phases))
+      if (rows.fields.length) check(await supabase!.from('fields').insert(rows.fields))
+      if (rows.transitions.length) check(await supabase!.from('phase_transitions').insert(rows.transitions))
+      if (rows.templates.length) check(await supabase!.from('pdf_templates').insert(rows.templates))
+      for (let i = 0; i < rows.cards.length; i += 200) check(await supabase!.from('cards').insert(rows.cards.slice(i, i + 200)))
+      // history: send whole cards per call so each card's events stay together
+      const byCard = new Map<string, typeof rows.events>()
+      for (const e of rows.events) (byCard.get(e.card_id) ?? byCard.set(e.card_id, []).get(e.card_id)!).push(e)
+      let batch: typeof rows.events = []
+      for (const list of byCard.values()) {
+        batch.push(...list)
+        if (batch.length >= 500) { check(await supabase!.rpc('restore_card_events', { p_events: batch })); batch = [] }
+      }
+      if (batch.length) check(await supabase!.rpc('restore_card_events', { p_events: batch }))
+    } catch (e) {
+      // undo a half-restored project
+      await supabase!.from('cards').delete().eq('pipe_id', rows.pipe.id)
+      await supabase!.from('pipes').delete().eq('id', rows.pipe.id)
+      throw e
+    }
+    return rows.pipe.id
   },
   async listTemplates(pipeId) {
     return check(await supabase!.from('pdf_templates').select('*').eq('pipe_id', pipeId).order('created_at')) as PdfTemplate[]

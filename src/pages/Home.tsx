@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Header, PipeIcon } from '../components/Layout'
+import { exportIcons, exportProject, ImportProjectButton } from '../components/ProjectTransfer'
 import { Button, ColorPicker, ConfirmDialog, IconButton, Input, Label, Menu, Modal, Spinner } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { PIPE_ICONS } from '../lib/defaults'
@@ -26,8 +27,13 @@ export default function Home() {
     <div className="min-h-screen">
       <Header />
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('home.greeting', { name: user?.name })}</h1>
-        <p className="mt-1 text-slate-500">{t('home.subtitle')}</p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{t('home.greeting', { name: user?.name })}</h1>
+            <p className="mt-1 text-slate-500">{t('home.subtitle')}</p>
+          </div>
+          <ImportProjectButton existingNames={(pipes ?? []).map((p) => p.name)} />
+        </div>
 
         {isLoading ? (
           <div className="mt-10 grid place-items-center"><Spinner /></div>
@@ -69,6 +75,8 @@ export default function Home() {
                     )}
                     items={[
                       { label: t('common.edit'), icon: <Pencil className="h-4 w-4" />, onClick: () => setEditing(p) },
+                      { label: t('transfer.exportBackup'), icon: <exportIcons.backup className="h-4 w-4" />, onClick: () => exportProject(p.id, 'backup', t) },
+                      { label: t('transfer.exportStructure'), icon: <exportIcons.structure className="h-4 w-4" />, onClick: () => exportProject(p.id, 'structure', t) },
                       { label: t('home.deletePipe'), icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => setDeleting(p) },
                     ]}
                   />
