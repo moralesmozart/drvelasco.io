@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { LangSwitch } from '../components/Layout'
-import { Button, Spinner, Toggle } from '../components/ui'
+import { Button, Spinner } from '../components/ui'
 import { FamilyChoice, FamilyMembers, HolderCard, memberErrors, memberRelation, memberScope, newMember } from '../forms/Family'
 import { ageFrom } from '../lib/family'
 import type { MemberDraft } from '../forms/Family'
@@ -33,7 +33,7 @@ export default function PublicForm() {
   const [captchaMissing, setCaptchaMissing] = useState(false)
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [mode, setMode] = useState<'choose' | 'one' | 'family'>('choose')
-  const [holderNeeds, setHolderNeeds] = useState(true)
+  const holderNeeds = true // the holder always needs the certificate too
   const [members, setMembers] = useState<MemberDraft[]>([])
   const [familyMsg, setFamilyMsg] = useState<string | null>(null)
   const [holderOpen, setHolderOpen] = useState(false)
@@ -150,7 +150,7 @@ export default function PublicForm() {
   )
   const errorCount = Object.keys(errors).length
   const people = step === 'family' ? members.length + (holderNeeds ? 1 : 0) : 1
-  const reset = () => { setValues({}); setTouched(false); setHolderTried(false); setHolderOpen(false); setMembers([]); setHolderNeeds(true); setFamilyMsg(null); setMode('choose'); setState('idle') }
+  const reset = () => { setValues({}); setTouched(false); setHolderTried(false); setHolderOpen(false); setMembers([]); setFamilyMsg(null); setMode('choose'); setState('idle') }
 
   return (
     <div className="min-h-screen px-4 py-6 sm:py-12" style={{ background: bg }}>
@@ -213,9 +213,6 @@ export default function PublicForm() {
                       onToggle={() => { if (!holderOpen) setMembers(members.map((m) => ({ ...m, open: false }))); setHolderOpen(!holderOpen) }}
                       onSave={() => { setHolderTried(true); if (!Object.keys(liveErrors).length) setHolderOpen(false) }}
                     >
-                      <div className="rounded-xl border border-slate-200 px-4 py-3">
-                        <Toggle checked={holderNeeds} onChange={setHolderNeeds} label={t('family.holderNeeds')} hint={t('family.holderNeedsHint')} />
-                      </div>
                       {fieldList}
                     </HolderCard>
                     <FamilyMembers
