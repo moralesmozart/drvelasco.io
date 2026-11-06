@@ -1,10 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, FileText, Image as ImageIcon, Loader2, Paperclip, X } from 'lucide-react'
+import { Check, ChevronDown, Copy, ExternalLink, FileText, Image as ImageIcon, Loader2, MessageCircle, Paperclip, X } from 'lucide-react'
 import clsx from 'clsx'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AttachmentValue, Field, FieldValue } from '../lib/types'
 import { compressImage } from './compress'
+import { COUNTRIES, flag, parsePhone, whatsappLink } from './countries'
+import { fieldText, isEs } from '../lib/localize'
 
 const inputCls =
   'w-full rounded-xl border bg-white px-3.5 text-[15px] text-slate-900 placeholder:text-slate-400 transition focus:outline-none focus:ring-4'
@@ -21,18 +23,21 @@ interface Props {
   error?: string
   onUpload?: (file: File) => Promise<AttachmentValue>
   onOpenFile?: (file: AttachmentValue) => void
+  /** Internal views: show a WhatsApp shortcut under phone fields. */
+  showWhatsApp?: boolean
 }
 
-export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile }: Props) {
-  const { t } = useTranslation()
+export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile, showWhatsApp }: Props) {
+  const { t, i18n } = useTranslation()
   const id = `f-${field.id}`
-  const describedBy = [field.description && `${id}-d`, error && `${id}-e`].filter(Boolean).join(' ') || undefined
+  const txt = fieldText(field, i18n.language)
+  const describedBy = [txt.description && `${id}-d`, error && `${id}-e`].filter(Boolean).join(' ') || undefined
 
   if (field.type === 'info') {
     return (
       <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-600">
-        {field.label && <p className="font-medium text-slate-800">{field.label}</p>}
-        {field.description && <p className="mt-1 whitespace-pre-line">{field.description}</p>}
+        {txt.label && <p className="font-medium text-slate-800">{txt.label}</p>}
+        {txt.description && <p className="mt-1 whitespace-pre-line">{txt.description}</p>}
       </div>
     )
   }
@@ -44,7 +49,7 @@ export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile
       case 'long_text':
         return <textarea {...common} rows={4} value={str} onChange={(e) => onChange(e.target.value)} className={clsx(inputCls, 'py-2.5', error ? errCls : okCls)} />
       case 'date':
-        return <input {...common} type="date" value={str} onChange={(e) => onChange(e.target.value)} className={clsx(inputCls, 'h-12', error ? errCls : okCls)} />
+        return <DateParts id={id} value={str} onChange={onChange} hasError={!!error} labelledBy={`${id}-l`} />
       case 'number':
       case 'currency':
         return (
@@ -64,19 +69,24 @@ export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile
       case 'email':
         return <input {...common} type="email" autoComplete="email" value={str} onChange={(e) => onChange(e.target.value)} className={clsx(inputCls, 'h-12', error ? errCls : okCls)} />
       case 'phone':
-        return <input {...common} type="tel" autoComplete="tel" placeholder="+55 11 91234 5678" value={str} onChange={(e) => onChange(e.target.value)} className={clsx(inputCls, 'h-12', error ? errCls : okCls)} />
+        return (
+          <>
+            <PhoneInput id={id} value={str} onChange={onChange} hasError={!!error} describedBy={describedBy} />
+            {showWhatsApp && <WhatsAppShortcut value={str} />}
+          </>
+        )
       case 'select':
         return (
           <select {...common} value={str} onChange={(e) => onChange(e.target.value || null)} className={clsx(inputCls, 'h-12', error ? errCls : okCls)}>
             <option value="">{t('forms.selectPlaceholder')}</option>
-            {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+            {field.options.map((o) => <option key={o} value={o}>{txt.option(o)}</option>)}
           </select>
         )
       case 'radio':
         return (
           <div role="radiogroup" aria-labelledby={`${id}-l`} className="space-y-2">
             {field.options.map((o) => (
-              <OptionRow key={o} label={o} checked={value === o} round onToggle={() => onChange(value === o ? null : o)} />
+              <OptionRow key={o} label={txt.option(o)} checked={value === o} round onToggle={() => onChange(value === o ? null : o)} />
             ))}
           </div>
         )
@@ -87,7 +97,7 @@ export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile
             {field.options.map((o) => (
               <OptionRow
                 key={o}
-                label={o}
+                label={txt.option(o)}
                 checked={arr.includes(o)}
                 onToggle={() => onChange(arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o])}
               />
@@ -105,10 +115,10 @@ export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile
   return (
     <div>
       <label id={`${id}-l`} htmlFor={id} className="block text-[15px] font-medium leading-snug text-slate-900">
-        {field.label}
+        {txt.label}
         {field.required && <span className="ml-0.5 text-rose-500" aria-hidden>*</span>}
       </label>
-      {field.description && <p id={`${id}-d`} className="mt-1 whitespace-pre-line text-sm text-slate-500">{field.description}</p>}
+      {txt.description && <p id={`${id}-d`} className="mt-1 whitespace-pre-line text-sm text-slate-500">{txt.description}</p>}
       <div className="mt-2">{control}</div>
       <AnimatePresence>
         {error && (
@@ -223,6 +233,162 @@ function Uploader({ id, value, onChange, onUpload, onOpenFile, hasError }: {
           ))}
         </ul>
       )}
+      {problem && <p className="mt-1.5 text-sm text-rose-600">{problem}</p>}
+    </div>
+  )
+}
+
+/* ───────── Phone with country picker ───────── */
+function PhoneInput({ id, value, onChange, hasError, describedBy }: {
+  id: string; value: string; onChange: (v: FieldValue) => void; hasError: boolean; describedBy?: string
+}) {
+  const { t, i18n } = useTranslation()
+  const parsed = parsePhone(value)
+  const [iso, setIso] = useState(parsed.iso)
+  const country = COUNTRIES.find((c) => c.iso === iso) ?? COUNTRIES[0]
+  const number = parsed.number
+
+  const emit = (dial: string, digits: string) => onChange(digits ? `+${dial} ${digits}` : null)
+
+  return (
+    <div className={clsx('flex h-12 overflow-hidden rounded-xl border bg-white transition focus-within:ring-4', hasError ? 'border-rose-300 focus-within:ring-rose-100' : 'border-slate-200 focus-within:border-brand-400 focus-within:ring-brand-100')}>
+      <div className="relative flex shrink-0 items-center gap-1.5 border-r border-slate-200 bg-slate-50 pl-3 pr-2 text-[15px] text-slate-700">
+        <span className="text-xl leading-none" aria-hidden>{flag(country.iso)}</span>
+        <span className="tabular-nums">+{country.dial}</span>
+        <ChevronDown className="h-4 w-4 text-slate-400" />
+        <select
+          aria-label={t('forms.country')}
+          value={iso}
+          onChange={(e) => {
+            const c = COUNTRIES.find((x) => x.iso === e.target.value)!
+            setIso(c.iso)
+            emit(c.dial, number)
+          }}
+          className="absolute inset-0 cursor-pointer opacity-0"
+        >
+          {COUNTRIES.map((c, i) => (
+            <option key={c.iso} value={c.iso}>
+              {flag(c.iso)} {isEs(i18n.language) ? c.es : c.pt} (+{c.dial}){i === 2 ? ' ' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+      <input
+        id={id}
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel-national"
+        aria-invalid={hasError}
+        aria-describedby={describedBy}
+        placeholder={country.iso === 'BR' ? '31 99999 8888' : country.iso === 'ES' ? '612 345 678' : '555 123 4567'}
+        value={number}
+        onChange={(e) => emit(country.dial, e.target.value.replace(/\D/g, '').slice(0, 15))}
+        className="min-w-0 flex-1 bg-transparent px-3.5 text-[15px] tabular-nums text-slate-900 placeholder:text-slate-400 focus:outline-none"
+      />
+    </div>
+  )
+}
+
+function WhatsAppShortcut({ value }: { value: string }) {
+  const { t } = useTranslation()
+  const link = whatsappLink(value)
+  if (!link) return null
+  const short = link.replace('https://', '')
+  return (
+    <div className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm">
+      <MessageCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+      <span className="text-xs font-medium uppercase tracking-wide text-emerald-700">{t('card.whatsapp')}</span>
+      <a href={link} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-medium text-emerald-800 hover:underline">{short}</a>
+      <button type="button" title={t('card.copy')} aria-label={t('card.copy')} onClick={() => navigator.clipboard.writeText(short)} className="text-emerald-600 hover:text-emerald-800">
+        <Copy className="h-4 w-4" />
+      </button>
+      <a href={link} target="_blank" rel="noreferrer" title={t('card.openWhatsapp')} aria-label={t('card.openWhatsapp')} className="text-emerald-600 hover:text-emerald-800">
+        <ExternalLink className="h-4 w-4" />
+      </a>
+    </div>
+  )
+}
+
+/* ───────── Date as day / month / year boxes ───────── */
+function splitDate(v: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v)
+  return m ? { d: m[3], m: m[2], y: m[1] } : { d: '', m: '', y: '' }
+}
+
+function DateParts({ id, value, onChange, hasError, labelledBy }: {
+  id: string; value: string; onChange: (v: FieldValue) => void; hasError: boolean; labelledBy: string
+}) {
+  const { t } = useTranslation()
+  const [parts, setParts] = useState(() => splitDate(value))
+  const [touched, setTouched] = useState(false)
+  const refs = { d: useRef<HTMLInputElement>(null), m: useRef<HTMLInputElement>(null), y: useRef<HTMLInputElement>(null) }
+
+  // External value changed (e.g. card switched): resync
+  useEffect(() => {
+    const cur = parts.y && parts.m && parts.d ? `${parts.y}-${parts.m.padStart(2, '0')}-${parts.d.padStart(2, '0')}` : ''
+    if (value && value !== cur) setParts(splitDate(value))
+    if (!value && cur) setParts({ d: '', m: '', y: '' })
+  }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const complete = parts.d.length > 0 && parts.m.length > 0 && parts.y.length === 4
+  const iso = complete ? `${parts.y}-${parts.m.padStart(2, '0')}-${parts.d.padStart(2, '0')}` : ''
+  const valid = complete && (() => {
+    const dt = new Date(`${iso}T00:00:00`)
+    return !isNaN(dt.getTime()) && dt.getDate() === Number(parts.d) && dt.getMonth() + 1 === Number(parts.m) && Number(parts.y) >= 1900 && Number(parts.y) <= 2100
+  })()
+  const empty = !parts.d && !parts.m && !parts.y
+  const problem = touched && !empty && (!complete ? t('forms.dateIncomplete') : !valid ? t('forms.dateInvalid') : null)
+
+  function set(key: 'd' | 'm' | 'y', raw: string) {
+    const max = key === 'y' ? 4 : 2
+    const v = raw.replace(/\D/g, '').slice(0, max)
+    const next = { ...parts, [key]: v }
+    setParts(next)
+    if (v.length === max) (key === 'd' ? refs.m : key === 'm' ? refs.y : null)?.current?.focus()
+    const c = next.d && next.m && next.y.length === 4
+    const isoNext = c ? `${next.y}-${next.m.padStart(2, '0')}-${next.d.padStart(2, '0')}` : ''
+    const dt = c ? new Date(`${isoNext}T00:00:00`) : null
+    const ok = !!dt && !isNaN(dt.getTime()) && dt.getDate() === Number(next.d) && dt.getMonth() + 1 === Number(next.m)
+    onChange(ok ? isoNext : null)
+  }
+
+  function back(key: 'd' | 'm' | 'y', e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Backspace' && !parts[key]) (key === 'y' ? refs.m : key === 'm' ? refs.d : null)?.current?.focus()
+  }
+
+  const box = (key: 'd' | 'm' | 'y', label: string, placeholder: string, w: string) => (
+    <label className={clsx('flex flex-col', w)}>
+      <span className="mb-1 text-xs font-medium text-slate-500">{label}</span>
+      <input
+        id={key === 'd' ? id : undefined}
+        ref={refs[key]}
+        inputMode="numeric"
+        autoComplete="off"
+        aria-label={label}
+        aria-describedby={labelledBy}
+        aria-invalid={hasError || !!problem}
+        placeholder={placeholder}
+        value={parts[key]}
+        onChange={(e) => set(key, e.target.value)}
+        onKeyDown={(e) => back(key, e)}
+        onBlur={() => {
+          setTouched(true)
+          if (key !== 'y' && parts[key].length === 1 && parts[key] !== '0') setParts((pp) => ({ ...pp, [key]: pp[key].padStart(2, '0') }))
+        }}
+        className={clsx(inputCls, 'h-12 text-center tabular-nums tracking-widest', hasError || problem ? errCls : okCls)}
+      />
+    </label>
+  )
+
+  return (
+    <div>
+      <div className="flex items-end gap-2" role="group" aria-labelledby={labelledBy}>
+        {box('d', t('forms.day'), 'DD', 'w-20')}
+        <span className="pb-3 text-slate-300">/</span>
+        {box('m', t('forms.month'), 'MM', 'w-20')}
+        <span className="pb-3 text-slate-300">/</span>
+        {box('y', t('forms.year'), 'AAAA', 'w-28')}
+      </div>
       {problem && <p className="mt-1.5 text-sm text-rose-600">{problem}</p>}
     </div>
   )

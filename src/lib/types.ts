@@ -24,6 +24,7 @@ export interface Phase {
   description: string | null
   position: number
   is_final: boolean
+  translations?: { es?: { name?: string } }
 }
 
 export interface FieldCondition {
@@ -44,6 +45,7 @@ export interface Field {
   conditions: FieldCondition[]
   show_on_card: boolean
   position: number
+  translations?: { es?: { label?: string; description?: string | null; options?: string[] } }
 }
 
 export interface AttachmentValue {
@@ -81,7 +83,7 @@ export interface Board {
   transitions: Transition[]
 }
 
-export type PhaseInput = Pick<Phase, 'name' | 'color' | 'description' | 'is_final'>
+export type PhaseInput = Pick<Phase, 'name' | 'color' | 'description' | 'is_final' | 'translations'>
 
 export interface FormSettings {
   title?: string
@@ -92,6 +94,7 @@ export interface FormSettings {
   /** Animated wordmark on the public form: small line above (e.g. a title) + main name */
   logo_kicker?: string
   logo_name?: string
+  es?: { title?: string; description?: string; success_message?: string; submit_label?: string }
 }
 
 export interface PublicFormDef {

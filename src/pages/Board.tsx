@@ -18,6 +18,7 @@ import { Button, Input, Label, Modal, Spinner } from '../components/ui'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CardDrawer } from '../board/CardDrawer'
 import { repo } from '../lib/repo'
+import { fieldText, phaseLabel } from '../lib/localize'
 import type { Card, Phase } from '../lib/types'
 
 const isPhaseId = (id: unknown) => typeof id === 'string' && id.startsWith('phase:')
@@ -25,7 +26,7 @@ const stripPhase = (id: string) => id.slice(6)
 
 export default function Board() {
   const { pipeId = '' } = useParams()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({ queryKey: ['board', pipeId], queryFn: () => repo.getBoard(pipeId), staleTime: 0 })
 
@@ -64,7 +65,7 @@ export default function Board() {
   const refresh = () => qc.invalidateQueries({ queryKey: ['board', pipeId] })
   const transitions = useMemo(() => data?.transitions ?? [], [data])
   const startFields = useMemo(() => (data?.fields ?? []).filter((f) => f.phase_id === null), [data])
-  const phaseName = (id: string) => phases.find((p) => p.id === id)?.name ?? ''
+  const phaseName = (id: string) => { const p = phases.find((x) => x.id === id); return p ? phaseLabel(p, i18n.language) : '' }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -168,7 +169,7 @@ export default function Board() {
       const card = data!.cards.find((c) => c.id === e.active.id)
       const missing = card ? missingRequired(data!.fields, origin, card.values) : []
       if (missing.length) {
-        toast.error(t('card.dragMissing', { fields: missing.map((f) => f.label).join(', ') }))
+        toast.error(t('card.dragMissing', { fields: missing.map((f) => fieldText(f, i18n.language).label).join(', ') }))
         setByPhase(groupByPhase(data!.cards, phases.map((p) => p.id)))
         return
       }
@@ -275,7 +276,7 @@ export default function Board() {
             )}
             {active?.type === 'phase' && (
               <div className="w-[300px] rotate-1 rounded-2xl border-t-4 bg-white px-4 py-3 font-semibold shadow-lift" style={{ borderTopColor: active.phase.color, color: active.phase.color }}>
-                {active.phase.name}
+                {phaseLabel(active.phase, i18n.language)}
               </div>
             )}
           </DragOverlay>

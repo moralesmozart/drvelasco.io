@@ -4,6 +4,7 @@ import { CalendarDays, Clock, Globe, Paperclip, Type } from 'lucide-react'
 import clsx from 'clsx'
 import { useTranslation } from 'react-i18next'
 import { ageTone, formatValue, timeSince } from '../lib/format'
+import { fieldText } from '../lib/localize'
 import type { Card, Field } from '../lib/types'
 
 const FIELD_ICON = { date: CalendarDays, attachment: Paperclip } as const
@@ -32,7 +33,7 @@ export function CardContent({ card, fields, isFinal, overlay }: { card: Card; fi
               <div key={f.id} className="flex gap-2">
                 <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
                 <div className="min-w-0">
-                  <dt className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-400">{f.label}</dt>
+                  <dt className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-400">{fieldText(f, i18n.language).label}</dt>
                   <dd className="truncate text-sm text-slate-700">{formatValue(f, card.values[f.id] ?? null, i18n.language)}</dd>
                 </div>
               </div>

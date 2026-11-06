@@ -1,4 +1,5 @@
 import type { Field, FieldValue } from '../lib/types'
+import { parsePhone } from './countries'
 
 export function isEmpty(v: FieldValue | undefined) {
   return v === null || v === undefined || (typeof v === 'string' && v.trim() === '') || (Array.isArray(v) && v.length === 0)
@@ -24,7 +25,7 @@ export function validate(fields: Field[], values: Record<string, FieldValue>) {
     if (f.required && isEmpty(v)) { errors[f.id] = 'required'; continue }
     if (isEmpty(v)) continue
     if (f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v))) errors[f.id] = 'email'
-    if (f.type === 'phone' && String(v).replace(/\D/g, '').length < 8) errors[f.id] = 'phone'
+    if (f.type === 'phone' && parsePhone(String(v)).number.length < 8) errors[f.id] = 'phone'
   }
   return errors
 }

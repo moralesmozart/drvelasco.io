@@ -15,7 +15,7 @@ interface DemoDB {
   events?: CardEvent[]
 }
 
-const KEY = 'drvelasco-demo-v3'
+const KEY = 'drvelasco-demo-v4'
 const uid = () => crypto.randomUUID()
 const now = () => new Date().toISOString()
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString()
@@ -28,6 +28,11 @@ function seed(): DemoDB {
       description: 'Preencha o formulário e entraremos em contato o quanto antes.',
       brand_color: '#8bbcb4',
       success_message: 'Recebemos sua solicitação! Entraremos em contato em breve.',
+      es: {
+        title: 'Nueva solicitud',
+        description: 'Rellena el formulario y nos pondremos en contacto lo antes posible.',
+        success_message: '¡Hemos recibido tu solicitud! Te contactaremos pronto.',
+      },
     },
     created_at: now(),
   }
@@ -58,6 +63,18 @@ function seed(): DemoDB {
   const pay = { ...f('Forma de pagamento', 'checklist', 1, { required: true, options: ['Transferência', 'Cartão', 'Outro'] }), phase_id: phases[1].id }
   const value = { ...f('Valor', 'currency', 2), phase_id: phases[1].id }
   const fields = [name, doc, due, phone, email, topics, other, files, contact, agree, notes, pay, value]
+  const es: Array<[Field, string, string[]?, string?]> = [
+    [name, 'Nombre completo'], [doc, 'Número de documento'], [due, 'Fecha deseada'],
+    [phone, 'Teléfono (WhatsApp)', undefined, 'Con código de país. Solo lo usaremos para la atención.'], [email, 'Correo electrónico'],
+    [topics, '¿Qué servicios necesitas?', ['Consultoría', 'Documentación', 'Traducción', 'Otro']],
+    [other, 'Describe el otro servicio'], [files, 'Adjuntos', undefined, 'Opcional. Imágenes o PDF, hasta 10 MB.'],
+    [contact, '¿Cómo prefieres seguir?', ['Videollamada', 'Teléfono', 'Solo por mensaje']],
+    [agree, '¿Declaras que la información es verdadera?', ['Sí']],
+    [notes, 'Notas internas'], [pay, 'Forma de pago', ['Transferencia', 'Tarjeta', 'Otro']], [value, 'Valor'],
+  ]
+  for (const [fl, label, options, description] of es) fl.translations = { es: { label, options, description } }
+  const phaseEs = ['Bandeja de entrada', 'En curso', 'Pendiente de pago', 'Pagado (transferencia)', 'Pagado (tarjeta)', 'Completado']
+  phases.forEach((p, i) => { p.translations = { es: { name: phaseEs[i] } } })
 
   const people: Array<[string, string, string, number, number]> = [
     // name, document, date, phase index, days in phase

@@ -10,11 +10,12 @@ import { Button, Spinner } from '../components/ui'
 import { FieldInput } from '../forms/FieldInput'
 import { isVisible, validate, visibleValues } from '../forms/logic'
 import { repo } from '../lib/repo'
+import { formText } from '../lib/localize'
 import type { FieldValue } from '../lib/types'
 
 export default function PublicForm() {
   const { slug = '' } = useParams()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data, isLoading } = useQuery({ queryKey: ['public-form', slug], queryFn: () => repo.getPublicForm(slug), retry: 1 })
   const [values, setValues] = useState<Record<string, FieldValue>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -23,7 +24,8 @@ export default function PublicForm() {
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
   const fields = useMemo(() => data?.fields ?? [], [data])
-  const settings = data?.pipe.settings ?? {}
+  const rawSettings = data?.pipe.settings ?? {}
+  const settings = { ...rawSettings, ...formText(rawSettings, i18n.language) }
   const bg = settings.brand_color || '#8bbcb4'
 
   const errorText = (code: string) =>

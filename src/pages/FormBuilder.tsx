@@ -3,7 +3,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronLeft, Copy, ExternalLink, GitBranch, GripVertical, Palette, Plus, Trash2, X } from 'lucide-react'
+import { ChevronLeft, Copy, ExternalLink, GitBranch, GripVertical, Languages, Palette, Plus, Trash2, X } from 'lucide-react'
 import clsx from 'clsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -68,7 +68,7 @@ export default function FormBuilder() {
     const meta = fieldMeta(type)
     const input: FieldInputT = {
       phase_id: scope, type, label: type === 'info' ? '' : t('builder.newFieldLabel'), description: null,
-      required: false, options: meta.hasOptions ? ['Opção 1', 'Opção 2'] : [], conditions: [], show_on_card: false,
+      required: false, options: meta.hasOptions ? ['Opção 1', 'Opção 2'] : [], conditions: [], show_on_card: false, translations: {},
     }
     const created = await track(repo.createField(pipeId, input, scoped.length))
     setFields((fs) => [...fs, created])
@@ -366,6 +366,8 @@ function FieldEditor({ field, candidates, onChange }: { field: Field; candidates
         </div>
       )}
 
+      <TranslationBox field={field} onChange={onChange} />
+
       <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4">
         <p className="flex items-center gap-1.5 text-sm font-medium text-violet-900"><GitBranch className="h-4 w-4" /> {t('builder.conditions')}</p>
         <p className="mt-0.5 text-xs text-violet-700/80">{t('builder.conditionsHint')}</p>
@@ -467,6 +469,30 @@ function SettingsEditor({ settings, onSave }: { settings: FormSettings; onSave: 
         </div>
         <div className="mt-3"><ColorPicker value={s.brand_color ?? ''} onChange={(brand_color) => setS({ ...s, brand_color })} /></div>
       </div>
+      <details className="group rounded-xl border border-amber-200 bg-amber-50/50 p-3">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-amber-900">
+          <Languages className="h-4 w-4" /> {t('builder.spanish')}
+          <span className="ml-auto text-xs text-amber-700 group-open:hidden">{t('builder.spanishHint')}</span>
+        </summary>
+        <div className="mt-3 space-y-3">
+          <div>
+            <Label htmlFor="fs-es-title">{t('builder.formTitle')} (ES)</Label>
+            <Input id="fs-es-title" value={s.es?.title ?? ''} onChange={(e) => setS({ ...s, es: { ...s.es, title: e.target.value } })} />
+          </div>
+          <div>
+            <Label htmlFor="fs-es-desc">{t('builder.formDescription')} (ES)</Label>
+            <Textarea id="fs-es-desc" rows={5} value={s.es?.description ?? ''} onChange={(e) => setS({ ...s, es: { ...s.es, description: e.target.value } })} />
+          </div>
+          <div>
+            <Label htmlFor="fs-es-success">{t('builder.successMessage')} (ES)</Label>
+            <Textarea id="fs-es-success" rows={2} value={s.es?.success_message ?? ''} onChange={(e) => setS({ ...s, es: { ...s.es, success_message: e.target.value } })} />
+          </div>
+          <div>
+            <Label htmlFor="fs-es-submit">{t('builder.submitLabel')} (ES)</Label>
+            <Input id="fs-es-submit" value={s.es?.submit_label ?? ''} onChange={(e) => setS({ ...s, es: { ...s.es, submit_label: e.target.value } })} />
+          </div>
+        </div>
+      </details>
       <div>
         <Label htmlFor="fs-success">{t('builder.successMessage')}</Label>
         <Textarea id="fs-success" rows={2} value={s.success_message ?? ''} onChange={(e) => setS({ ...s, success_message: e.target.value })} />
@@ -477,5 +503,52 @@ function SettingsEditor({ settings, onSave }: { settings: FormSettings; onSave: 
       </div>
       <Button type="submit" loading={busy} className="w-full">{t('common.save')}</Button>
     </form>
+  )
+}
+
+function TranslationBox({ field, onChange }: { field: Field; onChange: (p: Partial<FieldInputT>) => void }) {
+  const { t } = useTranslation()
+  const es = field.translations?.es ?? {}
+  const set = (patch: Partial<NonNullable<NonNullable<Field['translations']>['es']>>) =>
+    onChange({ translations: { ...field.translations, es: { ...es, ...patch } } })
+  const done = !!es.label?.trim()
+  return (
+    <details className="group rounded-xl border border-amber-200 bg-amber-50/50 p-4" open={!done}>
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-amber-900">
+        <Languages className="h-4 w-4" /> {t('builder.spanish')}
+        <span className={clsx('ml-auto rounded-full px-2 py-0.5 text-[11px] font-semibold', done ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
+          {done ? t('builder.translated') : t('builder.missing')}
+        </span>
+      </summary>
+      <div className="mt-3 space-y-3">
+        <div>
+          <Label htmlFor="fe-es-label">{t('builder.label')} (ES)</Label>
+          <Textarea id="fe-es-label" rows={2} value={es.label ?? ''} placeholder={field.label} onChange={(e) => set({ label: e.target.value })} />
+        </div>
+        <div>
+          <Label htmlFor="fe-es-desc">{t('builder.description')} (ES)</Label>
+          <Textarea id="fe-es-desc" rows={2} value={es.description ?? ''} placeholder={field.description ?? ''} onChange={(e) => set({ description: e.target.value || null })} />
+        </div>
+        {field.options.length > 0 && (
+          <div>
+            <Label>{t('builder.options')} (ES)</Label>
+            <div className="space-y-1.5">
+              {field.options.map((o, i) => (
+                <Input
+                  key={i}
+                  className="h-9"
+                  placeholder={o}
+                  value={es.options?.[i] ?? ''}
+                  onChange={(e) => {
+                    const next = field.options.map((_, j) => (j === i ? e.target.value : es.options?.[j] ?? ''))
+                    set({ options: next })
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </details>
   )
 }

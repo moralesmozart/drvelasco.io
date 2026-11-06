@@ -6,6 +6,7 @@ import clsx from 'clsx'
 import { useTranslation } from 'react-i18next'
 import { IconButton, Menu } from '../components/ui'
 import type { Card, Field, Phase } from '../lib/types'
+import { phaseLabel } from '../lib/localize'
 import { CardTile } from './CardTile'
 
 interface Props {
@@ -24,7 +25,7 @@ interface Props {
 }
 
 export function PhaseColumn({ phase, cards, totalCount, fields, isFirst, isLast, blocked, onEdit, onDelete, onMove, onAddCard, onOpenCard }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { setNodeRef, attributes, listeners, transform, transition, isDragging, setActivatorNodeRef } = useSortable({
     id: `phase:${phase.id}`,
     data: { type: 'phase', phaseId: phase.id },
@@ -34,7 +35,7 @@ export function PhaseColumn({ phase, cards, totalCount, fields, isFirst, isLast,
     <section
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      aria-label={phase.name}
+      aria-label={phaseLabel(phase, i18n.language)}
       className={clsx(
         'flex max-h-full w-[300px] shrink-0 flex-col rounded-2xl bg-slate-100/80 transition-opacity',
         isDragging && 'opacity-40',
@@ -52,7 +53,7 @@ export function PhaseColumn({ phase, cards, totalCount, fields, isFirst, isLast,
           >
             <GripVertical className="h-4 w-4" />
           </button>
-          <h2 className="truncate font-semibold" style={{ color: phase.color }}>{phase.name}</h2>
+          <h2 className="truncate font-semibold" style={{ color: phase.color }}>{phaseLabel(phase, i18n.language)}</h2>
           <span className="rounded-md bg-slate-100 px-1.5 text-xs font-semibold tabular-nums text-slate-600">{totalCount}</span>
           {phase.is_final && (
             <span title={t('board.final')}><CheckCircle2 className="h-4 w-4 text-emerald-500" /></span>

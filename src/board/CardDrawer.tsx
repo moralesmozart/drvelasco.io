@@ -12,6 +12,7 @@ import { FieldInput } from '../forms/FieldInput'
 import { isVisible } from '../forms/logic'
 import { formatValue, timeSince } from '../lib/format'
 import { repo } from '../lib/repo'
+import { fieldText, phaseLabel } from '../lib/localize'
 import type { AttachmentValue, Board, Card, CardEvent, Field, FieldValue, Phase } from '../lib/types'
 import { allowedTargets, missingRequired } from './rules'
 
@@ -91,7 +92,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
     await flush()
     try {
       await onMoved(card.id, p.id)
-      toast.success(t('board.moved', { to: p.name }))
+      toast.success(t('board.moved', { to: phaseLabel(p, i18n.language) }))
       setShowErrors(false)
       qc.invalidateQueries({ queryKey: ['events', card.id] })
     } catch {
@@ -106,7 +107,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
   }
 
   const fieldName = useMemo(() => Object.fromEntries(board.fields.map((f) => [f.id, f])), [board.fields])
-  const phaseName = (id: unknown) => board.phases.find((p) => p.id === id)?.name ?? '—'
+  const phaseName = (id: unknown) => { const p = board.phases.find((x) => x.id === id); return p ? phaseLabel(p, i18n.language) : '—' }
 
   const renderFields = (list: Field[], errorsOn: boolean) =>
     list.filter((f) => isVisible(f, values)).map((f) => (
@@ -118,6 +119,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
           error={errorsOn && missing.some((m) => m.id === f.id) ? t('forms.errRequired') : undefined}
           onUpload={(file) => repo.uploadCardFile(card.id, file)}
           onOpenFile={openFile}
+          showWhatsApp
         />
       </motion.div>
     ))
@@ -128,7 +130,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
       <header className="flex items-start gap-3 border-b border-slate-200 px-5 py-4 sm:px-7">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-md px-2 py-0.5 font-semibold text-white" style={{ background: phase.color }}>{phase.name}</span>
+            <span className="rounded-md px-2 py-0.5 font-semibold text-white" style={{ background: phase.color }}>{phaseLabel(phase, i18n.language)}</span>
             <span className="inline-flex items-center gap-1 text-slate-500"><Clock className="h-3.5 w-3.5" /> {t('board.inPhaseFor', { time: timeSince(card.phase_entered_at, i18n.language) })}</span>
             {card.created_via === 'public_form' && <span className="inline-flex items-center gap-1 text-slate-500"><Globe className="h-3.5 w-3.5" /> {t('board.viaForm')}</span>}
           </div>
@@ -153,7 +155,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
             <div className="space-y-6">{renderFields(startFields, false)}</div>
           </Section>
           {otherPhases.map((p) => (
-            <Section key={p.id} title={p.name} color={p.color} defaultOpen={fieldsOf(p.id).some((f) => values[f.id] !== undefined && values[f.id] !== null)}>
+            <Section key={p.id} title={phaseLabel(p, i18n.language)} color={p.color} defaultOpen={fieldsOf(p.id).some((f) => values[f.id] !== undefined && values[f.id] !== null)}>
               <div className="space-y-6">{renderFields(fieldsOf(p.id), false)}</div>
             </Section>
           ))}
@@ -166,7 +168,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
         <section className="scroll-thin border-t border-slate-200 p-5 sm:p-7 lg:overflow-y-auto lg:border-l lg:border-t-0">
           <div className="mb-5 flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: phase.color }} />
-            <h3 className="font-semibold text-slate-900">{t('card.currentPhase')}: {phase.name}</h3>
+            <h3 className="font-semibold text-slate-900">{t('card.currentPhase')}: {phaseLabel(phase, i18n.language)}</h3>
           </div>
           {phase.description && <p className="-mt-3 mb-5 text-sm text-slate-500">{phase.description}</p>}
           {currentFields.length ? (
@@ -193,7 +195,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
                 )}
                 style={missing.length ? undefined : { borderColor: `${p.color}55`, color: p.color }}
               >
-                <span className="flex-1 truncate">{p.name}</span>
+                <span className="flex-1 truncate">{phaseLabel(p, i18n.language)}</span>
                 {moving === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />}
               </button>
             ))}
@@ -202,7 +204,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted }: Props) 
             {missing.length > 0 && (
               <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
                 <p className="flex items-center gap-1.5 font-semibold"><AlertCircle className="h-4 w-4" /> {t('card.fillRequired')}</p>
-                <ul className="mt-1.5 list-disc space-y-0.5 pl-5">{missing.map((f) => <li key={f.id}>{f.label}</li>)}</ul>
+                <ul className="mt-1.5 list-disc space-y-0.5 pl-5">{missing.map((f) => <li key={f.id}>{fieldText(f, i18n.language).label}</li>)}</ul>
               </motion.div>
             )}
           </AnimatePresence>
@@ -301,7 +303,7 @@ function Timeline({ events, loading, fieldName, phaseName, lang }: {
           const f = fieldName[String(p.field_id)]
           text = (
             <>
-              <b>{f?.label ?? t('card.removedField')}</b>: <span className="text-slate-400 line-through">{show(f, p.old)}</span> → <span>{show(f, p.new)}</span>
+              <b>{f ? fieldText(f, lang).label : t('card.removedField')}</b>: <span className="text-slate-400 line-through">{show(f, p.old)}</span> → <span>{show(f, p.new)}</span>
             </>
           )
         }

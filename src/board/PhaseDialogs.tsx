@@ -7,13 +7,13 @@ export function PhaseDialog({
   phase, open, onClose, onSave,
 }: { phase: Phase | null; open: boolean; onClose: () => void; onSave: (input: PhaseInput) => Promise<void> }) {
   const { t } = useTranslation()
-  const [form, setForm] = useState<PhaseInput>({ name: '', color: '#2563eb', description: '', is_final: false })
+  const [form, setForm] = useState<PhaseInput>({ name: '', color: '#2563eb', description: '', is_final: false, translations: {} })
   const [busy, setBusy] = useState(false)
   const [key, setKey] = useState<string | null>(null)
   const current = open ? (phase?.id ?? 'new') : null
   if (current !== key) {
     setKey(current)
-    setForm({ name: phase?.name ?? '', color: phase?.color ?? '#2563eb', description: phase?.description ?? '', is_final: phase?.is_final ?? false })
+    setForm({ name: phase?.name ?? '', color: phase?.color ?? '#2563eb', description: phase?.description ?? '', is_final: phase?.is_final ?? false, translations: phase?.translations ?? {} })
   }
 
   return (
@@ -45,6 +45,10 @@ export function PhaseDialog({
         <div>
           <Label htmlFor="phase-name">{t('board.phaseName')}</Label>
           <Input id="phase-name" autoFocus maxLength={40} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </div>
+        <div>
+          <Label htmlFor="phase-name-es">{t('board.phaseNameEs')}</Label>
+          <Input id="phase-name-es" maxLength={40} placeholder={form.name} value={form.translations?.es?.name ?? ''} onChange={(e) => setForm({ ...form, translations: { ...form.translations, es: { name: e.target.value } } })} />
         </div>
         <div>
           <Label>{t('board.phaseColor')}</Label>

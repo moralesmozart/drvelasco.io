@@ -1,4 +1,5 @@
 import type { Field, FieldValue } from './types'
+import { fieldText } from './localize'
 
 export function timeSince(iso: string, lang: string) {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000
@@ -24,7 +25,9 @@ export function ageTone(iso: string) {
 
 export function formatValue(field: Field, value: FieldValue, lang: string): string {
   if (value === null || value === undefined || value === '') return '—'
-  if (Array.isArray(value)) return value.map((v) => (typeof v === 'string' ? v : v.name)).join(', ')
+  const opt = fieldText(field, lang).option
+  if (Array.isArray(value)) return value.map((v) => (typeof v === 'string' ? opt(v) : v.name)).join(', ')
+  if (typeof value === 'string' && field.options.length) return opt(value)
   if (field.type === 'date' && typeof value === 'string') {
     const d = new Date(value + (value.length === 10 ? 'T00:00:00' : ''))
     return isNaN(d.getTime()) ? value : d.toLocaleDateString(lang)
