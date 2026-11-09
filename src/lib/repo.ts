@@ -1,6 +1,6 @@
 import { cleanValues } from './sanitize'
 import type {
-  AttachmentValue, Board, Card, CardEvent, FamilyMemberInput, Field, PdfTemplate, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef, TeamMember,
+  AttachmentValue, Board, Card, CardEvent, FamilyMemberInput, Field, PdfTemplate, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef, TeamMember, Transition,
 } from './types'
 import { supabase, isSupabaseConfigured } from './supabase'
 import { demoRepo } from './demoRepo'
@@ -22,6 +22,8 @@ export interface Repo {
   reorderPhases(orderedIds: string[]): Promise<void>
   /** Moves all cards of `id` into `moveCardsTo` (if any), then deletes the phase. */
   deletePhase(id: string, moveCardsTo: string | null): Promise<void>
+  /** Replaces the move rules of these phases (a phase with no rows can move anywhere) */
+  setTransitions(phaseIds: string[], rows: Transition[]): Promise<void>
 
   createCard(pipeId: string, phaseId: string, title: string, values: Record<string, FieldValue>): Promise<Card>
   moveCard(cardId: string, phaseId: string, position: number): Promise<void>
@@ -136,6 +138,10 @@ const supabaseRepo: Repo = {
     await Promise.all(
       orderedIds.map((id, i) => supabase!.from('phases').update({ position: i }).eq('id', id).then(check)),
     )
+  },
+  async setTransitions(phaseIds, rows) {
+    if (phaseIds.length) check(await supabase!.from('phase_transitions').delete().in('from_phase_id', phaseIds))
+    if (rows.length) check(await supabase!.from('phase_transitions').insert(rows))
   },
   async deletePhase(id, moveCardsTo) {
     if (moveCardsTo) check(await supabase!.from('cards').update({ phase_id: moveCardsTo }).eq('phase_id', id))

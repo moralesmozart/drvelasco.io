@@ -245,6 +245,11 @@ export const demoRepo: Repo = {
     db.phases = db.phases.map((p) => (orderedIds.includes(p.id) ? { ...p, position: orderedIds.indexOf(p.id) } : p))
     save()
   },
+  async setTransitions(phaseIds, rows) {
+    const ids = new Set(phaseIds)
+    db.transitions = [...db.transitions.filter((t) => !ids.has(t.from_phase_id)), ...rows]
+    save()
+  },
   async deletePhase(id, moveCardsTo) {
     if (moveCardsTo) {
       db.cards = db.cards.map((c) => (c.phase_id === id ? { ...c, phase_id: moveCardsTo, phase_entered_at: now() } : c))

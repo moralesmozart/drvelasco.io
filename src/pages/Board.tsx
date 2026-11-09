@@ -4,7 +4,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, ChevronLeft, FileText, LayoutList, Link2, MoreHorizontal, Plus, Search, Upload, X } from 'lucide-react'
+import { BarChart3, ChevronLeft, FileText, LayoutList, Link2, MoreHorizontal, Plus, Search, Upload, X, Route } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { CardContent, FamilyContext } from '../board/CardTile'
 import { membersByHolder } from '../lib/family'
 import { DeletePhaseDialog, PhaseDialog } from '../board/PhaseDialogs'
+import { MoveRulesDialog } from '../board/MoveRules'
 import { PhaseColumn } from '../board/PhaseColumn'
 import { allowedTargets, canMove, groupByPhase, missingRequired, positionAt } from '../board/rules'
 import { Header, PipeIcon } from '../components/Layout'
@@ -42,6 +43,7 @@ export default function Board() {
   const [phaseDialog, setPhaseDialog] = useState<{ phase: Phase | null } | null>(null)
   const [deleting, setDeleting] = useState<Phase | null>(null)
   const [newCardPhase, setNewCardPhase] = useState<string | null>(null)
+  const [rulesFor, setRulesFor] = useState<{ focus: string | null } | null>(null)
   const [params, setParams] = useSearchParams()
   const openCardId = params.get('card')
   const setOpenCard = (c: Card | null) => setParams(c ? { card: c.id } : {}, { replace: false })
@@ -245,6 +247,7 @@ export default function Board() {
             trigger={(open) => <Button variant="secondary" size="sm" onClick={open} aria-label="Menu"><MoreHorizontal className="h-4 w-4" /></Button>}
             items={[
               { label: t('board.publicForm') + ' · ' + t('board.copyLink'), icon: <Link2 className="h-4 w-4" />, onClick: () => { void navigator.clipboard.writeText(formUrl).then(() => toast.success(t('board.linkCopied'))) } },
+              { label: t('rules.menu'), icon: <Route className="h-4 w-4" />, onClick: () => setRulesFor({ focus: null }) },
               { label: t('importer.title'), icon: <Upload className="h-4 w-4" />, onClick: () => navigate(`/pipe/${pipeId}/import`) },
               { label: t('transfer.exportBackup'), icon: <exportIcons.backup className="h-4 w-4" />, onClick: () => exportProject(pipeId, 'backup', t) },
               { label: t('transfer.exportStructure'), icon: <exportIcons.structure className="h-4 w-4" />, onClick: () => exportProject(pipeId, 'structure', t) },
@@ -273,6 +276,7 @@ export default function Board() {
                   onMove={(dir) => movePhase(p.id, dir)}
                   onAddCard={i === 0 ? () => setNewCardPhase(p.id) : undefined}
                   onOpenCard={setOpenCard}
+                  onRules={() => setRulesFor({ focus: p.id })}
                 />
               ))}
             </SortableContext>
@@ -306,6 +310,14 @@ export default function Board() {
           else await repo.createPhase(pipeId, input, phases.length)
           refresh()
         }}
+      />
+      <MoveRulesDialog
+        open={!!rulesFor}
+        onClose={() => setRulesFor(null)}
+        phases={phases}
+        transitions={transitions}
+        focusPhaseId={rulesFor?.focus}
+        onSaved={refresh}
       />
       <DeletePhaseDialog
         phase={deleting}

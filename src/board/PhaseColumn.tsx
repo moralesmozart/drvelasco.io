@@ -1,7 +1,7 @@
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Ban, CheckCircle2, GripVertical, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Ban, CheckCircle2, GripVertical, MoreHorizontal, Pencil, Plus, Route, Trash2 } from 'lucide-react'
 import clsx from 'clsx'
 import { useTranslation } from 'react-i18next'
 import { IconButton, Menu } from '../components/ui'
@@ -22,9 +22,10 @@ interface Props {
   onMove: (dir: -1 | 1) => void
   onAddCard?: () => void
   onOpenCard: (c: Card) => void
+  onRules?: () => void
 }
 
-export function PhaseColumn({ phase, cards, totalCount, fields, isFirst, isLast, blocked, onEdit, onDelete, onMove, onAddCard, onOpenCard }: Props) {
+export function PhaseColumn({ phase, cards, totalCount, fields, isFirst, isLast, blocked, onEdit, onDelete, onMove, onAddCard, onOpenCard, onRules }: Props) {
   const { t, i18n } = useTranslation()
   const { setNodeRef, attributes, listeners, transform, transition, isDragging, setActivatorNodeRef } = useSortable({
     id: `phase:${phase.id}`,
@@ -66,6 +67,7 @@ export function PhaseColumn({ phase, cards, totalCount, fields, isFirst, isLast,
               trigger={(open) => <IconButton label="Menu" onClick={open}><MoreHorizontal className="h-4 w-4" /></IconButton>}
               items={[
                 { label: t('board.editPhase'), icon: <Pencil className="h-4 w-4" />, onClick: onEdit },
+                ...(onRules ? [{ label: t('rules.menu'), icon: <Route className="h-4 w-4" />, onClick: onRules }] : []),
                 { label: t('board.moveLeft'), icon: <ArrowLeft className="h-4 w-4" />, onClick: () => onMove(-1), disabled: isFirst },
                 { label: t('board.moveRight'), icon: <ArrowRight className="h-4 w-4" />, onClick: () => onMove(1), disabled: isLast },
                 { label: t('board.deletePhase'), icon: <Trash2 className="h-4 w-4" />, onClick: onDelete, danger: true },

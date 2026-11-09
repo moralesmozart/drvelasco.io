@@ -25,6 +25,12 @@ const ptBR = {
     deletePipe: 'Excluir pipe', deletePipeTitle: 'Excluir "{{name}}"?',
     deletePipeBody: 'Todas as fases, campos e {{count}} cards serão excluídos para sempre. Digite o nome do pipe para confirmar.',
   },
+  rules: {
+    title: 'Regras de movimento', hint: 'Para onde um card pode ir a partir de cada fase. Vale para arrastar no quadro e para os botões dentro do card.',
+    presets: 'Atalhos', free: 'Livre', forward: 'Só para frente', forwardBack: 'Para frente + voltar 1 fase',
+    any: 'Qualquer fase', count_one: '{{count}} destino', count_other: '{{count}} destinos',
+    anyHint: 'Fase sem nenhum destino marcado = pode ir para qualquer fase. ← volta, → avança.', saved: 'Regras salvas', menu: 'Regras de movimento',
+  },
   board: {
     addPhase: 'Nova fase', phaseName: 'Nome da fase', phaseNameEs: 'Nome em espanhol (opcional)', phaseColor: 'Cor', phaseDescription: 'Descrição (opcional)',
     isFinal: 'Fase final', isFinalHint: 'Cards aqui contam como concluídos.',
@@ -187,6 +193,12 @@ const es: Dict = {
     pipeName: 'Nombre del pipe', color: 'Color', icon: 'Icono',
     deletePipe: 'Eliminar pipe', deletePipeTitle: '¿Eliminar "{{name}}"?',
     deletePipeBody: 'Todas las fases, campos y {{count}} tarjetas se eliminarán para siempre. Escribe el nombre del pipe para confirmar.',
+  },
+  rules: {
+    title: 'Reglas de movimiento', hint: 'A dónde puede ir una tarjeta desde cada fase. Vale para arrastrar en el tablero y para los botones dentro de la tarjeta.',
+    presets: 'Atajos', free: 'Libre', forward: 'Solo hacia adelante', forwardBack: 'Adelante + volver 1 fase',
+    any: 'Cualquier fase', count_one: '{{count}} destino', count_other: '{{count}} destinos',
+    anyHint: 'Fase sin ningún destino marcado = puede ir a cualquier fase. ← vuelve, → avanza.', saved: 'Reglas guardadas', menu: 'Reglas de movimiento',
   },
   board: {
     addPhase: 'Nueva fase', phaseName: 'Nombre de la fase', phaseNameEs: 'Nombre en español (opcional)', phaseColor: 'Color', phaseDescription: 'Descripción (opcional)',
