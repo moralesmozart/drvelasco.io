@@ -1,3 +1,4 @@
+import { cleanValues } from './sanitize'
 import type { Repo } from './repo'
 import type { Board, Card, CardEvent, Field, FieldValue, PdfTemplate, Phase, Pipe, PublicFormDef, Transition } from './types'
 import { DEFAULT_PHASES } from './defaults'
@@ -215,7 +216,7 @@ export const demoRepo: Repo = {
       pipe,
       phases,
       fields: db.fields.filter((f) => f.pipe_id === pipeId).sort((a, b) => a.position - b.position),
-      cards: db.cards.filter((c) => c.pipe_id === pipeId).sort((a, b) => a.position - b.position),
+      cards: db.cards.filter((c) => c.pipe_id === pipeId).sort((a, b) => a.position - b.position).map((c) => ({ ...c, values: cleanValues(c.values) })),
       transitions: db.transitions.filter((t) => ids.has(t.from_phase_id)),
     }
     return delay(board)

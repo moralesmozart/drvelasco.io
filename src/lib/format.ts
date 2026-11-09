@@ -26,7 +26,10 @@ export function ageTone(iso: string) {
 export function formatValue(field: Field, value: FieldValue, lang: string): string {
   if (value === null || value === undefined || value === '') return '—'
   const opt = fieldText(field, lang).option
-  if (Array.isArray(value)) return value.map((v) => (typeof v === 'string' ? opt(v) : v.name)).join(', ')
+  if (Array.isArray(value)) {
+    return value.map((v) => (typeof v === 'string' ? opt(v) : v && typeof v === 'object' && 'name' in v ? String(v.name) : '')).filter(Boolean).join(', ') || '—'
+  }
+  if (typeof value === 'object') return '—'
   if (typeof value === 'string' && field.options.length) return opt(value)
   if (field.type === 'date' && typeof value === 'string') {
     const d = new Date(value + (value.length === 10 ? 'T00:00:00' : ''))

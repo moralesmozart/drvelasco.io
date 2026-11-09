@@ -1,3 +1,4 @@
+import { cleanValues } from './sanitize'
 import type {
   AttachmentValue, Board, Card, CardEvent, FamilyMemberInput, Field, PdfTemplate, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef,
 } from './types'
@@ -114,7 +115,7 @@ const supabaseRepo: Repo = {
       pipe: check(pipe) as Pipe,
       phases: phaseRows,
       fields: check(fields) as Board['fields'],
-      cards: check(cards) as Card[],
+      cards: (check(cards) as Card[]).map((c) => ({ ...c, values: cleanValues(c.values) })),
       transitions: transitions as Board['transitions'],
     }
   },

@@ -4,6 +4,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { Spinner } from './components/ui'
 import { NewCardAlerts } from './components/NewCardAlerts'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { AuthProvider, useAuth } from './lib/auth'
 import Board from './pages/Board'
 import FormBuilder from './pages/FormBuilder'
@@ -26,6 +27,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
 // HashRouter: GitHub Pages serves static files only, so routes live after the '#'.
 export default function App() {
   return (
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <HashRouter>
@@ -45,5 +47,6 @@ export default function App() {
         <Toaster position="bottom-right" richColors closeButton />
       </AuthProvider>
     </QueryClientProvider>
+    </ErrorBoundary>
   )
 }

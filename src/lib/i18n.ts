@@ -6,7 +6,7 @@ const ptBR = {
   common: {
     cancel: 'Cancelar', save: 'Salvar', delete: 'Excluir', create: 'Criar', edit: 'Editar', close: 'Fechar',
     loading: 'Carregando…', error: 'Algo deu errado', back: 'Voltar', search: 'Procurar cards',
-    saved: 'Salvo', confirm: 'Confirmar',
+    saved: 'Salvo', confirm: 'Confirmar', reload: 'Recarregar',
   },
   auth: {
     title: 'Bem-vindo de volta', subtitle: 'Entre para ver as solicitações dos seus pacientes.',
@@ -163,7 +163,7 @@ const es: Dict = {
   common: {
     cancel: 'Cancelar', save: 'Guardar', delete: 'Eliminar', create: 'Crear', edit: 'Editar', close: 'Cerrar',
     loading: 'Cargando…', error: 'Algo salió mal', back: 'Volver', search: 'Buscar tarjetas',
-    saved: 'Guardado', confirm: 'Confirmar',
+    saved: 'Guardado', confirm: 'Confirmar', reload: 'Recargar',
   },
   auth: {
     title: 'Bienvenido de nuevo', subtitle: 'Entra para ver las solicitudes de tus pacientes.',
