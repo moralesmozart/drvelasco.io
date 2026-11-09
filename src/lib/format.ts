@@ -23,7 +23,7 @@ export function ageTone(iso: string) {
   return 'text-slate-600 bg-slate-100'
 }
 
-export function formatValue(field: Field, value: FieldValue, lang: string): string {
+export function formatValue(field: Field, value: FieldValue, lang: string, values?: Record<string, unknown>): string {
   if (value === null || value === undefined || value === '') return '—'
   const opt = fieldText(field, lang).option
   if (Array.isArray(value)) {
@@ -36,17 +36,45 @@ export function formatValue(field: Field, value: FieldValue, lang: string): stri
     return isNaN(d.getTime()) ? value : d.toLocaleDateString(lang)
   }
   if (field.type === 'currency' && typeof value === 'number') {
-    return new Intl.NumberFormat(lang, { style: 'currency', currency: currencyOf(field) }).format(value)
+    return new Intl.NumberFormat(lang, { style: 'currency', currency: currencyOf(field, values) }).format(value)
   }
   return String(value)
 }
 
 export const CURRENCIES = ['EUR', 'BRL', 'USD'] as const
 
-/** A currency field keeps its ISO code in options[0] (default EUR). */
-export function currencyOf(field: { type: string; options: string[] }) {
-  const c = field.type === 'currency' ? field.options[0] : undefined
-  return c && /^[A-Z]{3}$/.test(c) ? c : 'EUR'
+/**
+ * Currency settings live in a currency field's options:
+ *   ['BRL']                                    → always R$
+ *   ['EUR', '@<fieldId>', 'pix=BRL', 'wise=EUR'] → follows the answer of another field, EUR otherwise
+ */
+export interface CurrencyRule { base: string; by?: string; map: Record<string, string> }
+
+const ISO = /^[A-Z]{3}$/
+export function currencyRule(field: { type: string; options: string[] }): CurrencyRule {
+  const opts = field.type === 'currency' ? field.options : []
+  const base = opts[0] && ISO.test(opts[0]) ? opts[0] : 'EUR'
+  const by = opts.find((o) => o.startsWith('@'))?.slice(1) || undefined
+  const map: Record<string, string> = {}
+  for (const o of opts) {
+    const i = o.lastIndexOf('=')
+    if (i > 0 && ISO.test(o.slice(i + 1))) map[o.slice(0, i)] = o.slice(i + 1)
+  }
+  return { base, by, map }
+}
+
+export function ruleToOptions(r: CurrencyRule) {
+  return [r.base, ...(r.by ? [`@${r.by}`, ...Object.entries(r.map).map(([k, v]) => `${k}=${v}`)] : [])]
+}
+
+/** The currency for this field on a given card (its values decide when there is a rule). */
+export function currencyOf(field: { type: string; options: string[] }, values?: Record<string, unknown>) {
+  const r = currencyRule(field)
+  if (r.by && values) {
+    const v = values[r.by]
+    for (const item of Array.isArray(v) ? v : [v]) if (typeof item === 'string' && r.map[item]) return r.map[item]
+  }
+  return r.base
 }
 
 export function currencySymbol(code: string, lang = 'pt-BR') {

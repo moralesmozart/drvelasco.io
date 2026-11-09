@@ -1,4 +1,5 @@
-import { CURRENCIES, currencyOf, currencySymbol } from '../lib/format'
+import { fieldText } from '../lib/localize'
+import { CURRENCIES, currencyRule, currencySymbol, ruleToOptions } from '../lib/format'
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -245,6 +246,7 @@ export default function FormBuilder() {
                 ...(scope ? scoped : []),
               ].filter((f) => f.id !== current.id && f.type !== 'info' && f.type !== 'attachment' && (f.phase_id !== current.phase_id || f.position < current.position))}
               onChange={(p) => patchField(current.id, p)}
+              choiceFields={fields.filter((f) => f.id !== current.id && ['radio', 'select', 'checklist'].includes(f.type) && f.options.length > 0)}
             />
           ) : (
             <p className="hidden p-8 text-center text-sm text-slate-400 lg:block">{t('builder.selectField')}</p>
@@ -316,7 +318,7 @@ function FieldRow({ field, active, onSelect, onDuplicate, onDelete }: { field: F
   )
 }
 
-function FieldEditor({ field, candidates, onChange }: { field: Field; candidates: Field[]; onChange: (p: Partial<FieldInputT>) => void }) {
+function FieldEditor({ field, candidates, onChange, choiceFields = [] }: { field: Field; candidates: Field[]; onChange: (p: Partial<FieldInputT>) => void; choiceFields?: Field[] }) {
   const { t } = useTranslation()
   const meta = fieldMeta(field.type)
   const [newOpt, setNewOpt] = useState('')
@@ -351,22 +353,7 @@ function FieldEditor({ field, candidates, onChange }: { field: Field; candidates
       )}
 
       {field.type === 'currency' && (
-        <div>
-          <Label>{t('builder.currency')}</Label>
-          <div className="flex gap-2">
-            {CURRENCIES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-pressed={currencyOf(field) === c}
-                onClick={() => onChange({ options: [c] })}
-                className={clsx('rounded-xl border-2 px-4 py-2 text-sm font-semibold transition', currencyOf(field) === c ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600 hover:border-slate-300')}
-              >
-                {currencySymbol(c)} · {c}
-              </button>
-            ))}
-          </div>
-        </div>
+        <CurrencyEditor field={field} choiceFields={choiceFields} onChange={(options) => onChange({ options })} />
       )}
 
       {meta.hasOptions && (
@@ -578,5 +565,65 @@ function TranslationBox({ field, onChange }: { field: Field; onChange: (p: Parti
         )}
       </div>
     </details>
+  )
+}
+
+function CurrencyPills({ value, onPick, small }: { value: string; onPick: (c: string) => void; small?: boolean }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {CURRENCIES.map((c) => (
+        <button
+          key={c}
+          type="button"
+          aria-pressed={value === c}
+          onClick={() => onPick(c)}
+          className={clsx('rounded-xl border-2 font-semibold transition', small ? 'px-2.5 py-1 text-xs' : 'px-4 py-2 text-sm',
+            value === c ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600 hover:border-slate-300')}
+        >
+          {currencySymbol(c)} · {c}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Fixed currency, or one that follows another answer (e.g. PIX → R$). */
+function CurrencyEditor({ field, choiceFields, onChange }: { field: Field; choiceFields: Field[]; onChange: (options: string[]) => void }) {
+  const { t, i18n } = useTranslation()
+  const rule = currencyRule(field)
+  const by = choiceFields.find((f) => f.id === rule.by)
+  const set = (patch: Partial<typeof rule>) => onChange(ruleToOptions({ ...rule, ...patch }))
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>{rule.by ? t('builder.currencyDefault') : t('builder.currency')}</Label>
+        <CurrencyPills value={rule.base} onPick={(base) => set({ base })} />
+      </div>
+      {choiceFields.length > 0 && (
+        <Toggle
+          checked={!!rule.by}
+          onChange={(on) => set(on ? { by: choiceFields[0].id, map: {} } : { by: undefined, map: {} })}
+          label={t('builder.currencyFollows')}
+          hint={t('builder.currencyFollowsHint')}
+        />
+      )}
+      {rule.by && (
+        <div className="space-y-3 rounded-xl bg-slate-50 p-3">
+          <select
+            value={rule.by}
+            onChange={(e) => set({ by: e.target.value, map: {} })}
+            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+          >
+            {choiceFields.map((f) => <option key={f.id} value={f.id}>{fieldText(f, i18n.language).label || f.label}</option>)}
+          </select>
+          {by?.options.map((o) => (
+            <div key={o} className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm font-medium text-slate-700">{fieldText(by, i18n.language).option(o)}</span>
+              <CurrencyPills small value={rule.map[o] ?? rule.base} onPick={(c) => set({ map: { ...rule.map, [o]: c } })} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

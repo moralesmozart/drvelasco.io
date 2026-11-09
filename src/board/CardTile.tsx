@@ -52,7 +52,7 @@ export function CardContent({ card, fields, isFinal, overlay }: { card: Card; fi
                 <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
                 <div className="min-w-0">
                   <dt className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-400">{fieldText(f, i18n.language).label}</dt>
-                  <dd className="truncate text-sm text-slate-700">{formatValue(f, card.values[f.id] ?? null, i18n.language)}</dd>
+                  <dd className="truncate text-sm text-slate-700">{formatValue(f, card.values[f.id] ?? null, i18n.language, card.values)}</dd>
                 </div>
               </div>
             )

@@ -127,10 +127,21 @@ function ReportBody({ board: fullBoard, events: allEvents, period, lang }: { boa
   const money = board.fields.find((f) => f.id === moneyId)
   const breakdown = choice ? choice.options.map((o) => {
     const matching = inPeriod.filter((c) => { const v = c.values[choice.id]; return Array.isArray(v) ? (v as string[]).includes(o) : v === o })
-    const sum = money ? matching.reduce((acc, c) => acc + (Number(c.values[money.id]) || 0), 0) : 0
-    return { label: fieldText(choice, lang).option(o), count: matching.length, sum }
+    const byCur: Record<string, number> = {}
+    let sum = 0
+    if (money) for (const c of matching) {
+      const n = Number(c.values[money.id]) || 0
+      if (!n) continue
+      sum += n
+      const cur = money.type === 'currency' ? currencyOf(money, c.values) : ''
+      byCur[cur] = (byCur[cur] ?? 0) + n
+    }
+    return { label: fieldText(choice, lang).option(o), count: matching.length, sum, byCur }
   }) : []
-  const moneyFmt = (n: number) => money?.type === 'currency' ? new Intl.NumberFormat(lang, { style: 'currency', currency: currencyOf(money) }).format(n) : new Intl.NumberFormat(lang).format(n)
+  const moneyFmt = (byCur: Record<string, number>) => {
+    const parts = Object.entries(byCur).map(([cur, n]) => cur ? new Intl.NumberFormat(lang, { style: 'currency', currency: cur }).format(n) : new Intl.NumberFormat(lang).format(n))
+    return parts.length ? parts.join(' + ') : new Intl.NumberFormat(lang).format(0)
+  }
 
   return (
     <div className="space-y-6">
@@ -174,9 +185,9 @@ function ReportBody({ board: fullBoard, events: allEvents, period, lang }: { boa
                 {moneyFields.map((f) => <option key={f.id} value={f.id}>{fieldText(f, lang).label}</option>)}
               </select>
             }
-            rows={breakdown.map((r) => ({ label: r.label, value: r.sum, display: moneyFmt(r.sum) }))}
+            rows={breakdown.map((r) => ({ label: r.label, value: r.sum, display: moneyFmt(r.byCur) }))}
           >
-            <HBars rows={breakdown.map((r) => ({ label: r.label, value: r.sum, display: moneyFmt(r.sum) }))} />
+            <HBars rows={breakdown.map((r) => ({ label: r.label, value: r.sum, display: moneyFmt(r.byCur) }))} />
           </ChartCard>
         )}
       </div>

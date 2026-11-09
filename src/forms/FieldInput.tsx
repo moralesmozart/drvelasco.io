@@ -28,9 +28,11 @@ interface Props {
   showWhatsApp?: boolean
   /** Keeps ids unique when the same field is shown more than once (family members) */
   idPrefix?: string
+  /** Other answers on the same card (a money field's currency may depend on them) */
+  values?: Record<string, FieldValue>
 }
 
-export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile, showWhatsApp, idPrefix }: Props) {
+export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile, showWhatsApp, idPrefix, values }: Props) {
   const { t, i18n } = useTranslation()
   const id = idPrefix ? `f-${idPrefix}-${field.id}` : `f-${field.id}`
   const txt = fieldText(field, i18n.language)
@@ -57,7 +59,7 @@ export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile
       case 'currency':
         return (
           <div className="relative">
-            {field.type === 'currency' && <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">{currencySymbol(currencyOf(field), i18n.language)}</span>}
+            {field.type === 'currency' && <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">{currencySymbol(currencyOf(field, values), i18n.language)}</span>}
             <input
               {...common}
               type="number"
@@ -65,7 +67,7 @@ export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile
               step="any"
               value={str}
               onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-              className={clsx(inputCls, 'h-12', field.type === 'currency' && (currencySymbol(currencyOf(field), i18n.language).length > 1 ? 'pl-11' : 'pl-8'), error ? errCls : okCls)}
+              className={clsx(inputCls, 'h-12', field.type === 'currency' && (currencySymbol(currencyOf(field, values), i18n.language).length > 1 ? 'pl-11' : 'pl-8'), error ? errCls : okCls)}
             />
           </div>
         )

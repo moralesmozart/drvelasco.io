@@ -29,7 +29,7 @@ export function resolveKey(key: string, ctx: RenderContext): string {
   if (!f) return ''
   const v = ctx.card.values[f.id] as FieldValue | undefined
   if (v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length)) return ''
-  return formatValue(f, v, ctx.lang)
+  return formatValue(f, v, ctx.lang, ctx.card.values)
 }
 
 /** Keys used in a TipTap document. */

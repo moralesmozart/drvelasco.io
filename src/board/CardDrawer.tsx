@@ -133,6 +133,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted, onOpenCar
           error={errorsOn && missing.some((m) => m.id === f.id) ? t('forms.errRequired') : undefined}
           onUpload={(file) => repo.uploadCardFile(card.id, file)}
           onOpenFile={openFile}
+          values={values}
           showWhatsApp
         />
       </motion.div>
@@ -210,7 +211,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted, onOpenCar
             </Section>
           ))}
           <Section title={t('card.history')} icon={<History className="h-4 w-4" />} defaultOpen>
-            <Timeline events={events.data} loading={events.isLoading} fieldName={fieldName} phaseName={phaseName} lang={i18n.language} />
+            <Timeline events={events.data} loading={events.isLoading} fieldName={fieldName} phaseName={phaseName} lang={i18n.language} values={values} />
           </Section>
         </section>
 
@@ -223,7 +224,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted, onOpenCar
                 {sharedFields.filter((f) => holder && isVisible(f, withSharedValues(card, holder, board.fields))).map((f) => (
                   <div key={f.id}>
                     <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{fieldText(f, i18n.language).label}</dt>
-                    <dd className="mt-0.5 whitespace-pre-line text-sm text-slate-700">{formatValue(f, holder?.values[f.id] ?? null, i18n.language) || '—'}</dd>
+                    <dd className="mt-0.5 whitespace-pre-line text-sm text-slate-700">{formatValue(f, holder?.values[f.id] ?? null, i18n.language, holder?.values) || '—'}</dd>
                   </div>
                 ))}
               </dl>
@@ -383,13 +384,13 @@ function Section({ title, subtitle, color, icon, defaultOpen, children }: {
   )
 }
 
-function Timeline({ events, loading, fieldName, phaseName, lang }: {
-  events?: CardEvent[]; loading: boolean; fieldName: Record<string, Field>; phaseName: (id: unknown) => string; lang: string
+function Timeline({ events, loading, fieldName, phaseName, lang, values }: {
+  events?: CardEvent[]; loading: boolean; fieldName: Record<string, Field>; phaseName: (id: unknown) => string; lang: string; values?: Record<string, FieldValue>
 }) {
   const { t } = useTranslation()
   if (loading) return <Loader2 className="mx-auto h-5 w-5 animate-spin text-slate-300" />
   if (!events?.length) return <p className="text-sm text-slate-400">{t('card.noHistory')}</p>
-  const show = (f: Field | undefined, v: unknown) => (f ? formatValue(f, (v ?? null) as FieldValue, lang) : String(v ?? '—'))
+  const show = (f: Field | undefined, v: unknown) => (f ? formatValue(f, (v ?? null) as FieldValue, lang, values) : String(v ?? '—'))
   return (
     <ol className="relative space-y-4 border-l border-slate-200 pl-5">
       {events.map((e) => {

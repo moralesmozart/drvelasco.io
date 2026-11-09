@@ -95,7 +95,7 @@ export function remapProject(file: ProjectFile, name: string) {
     })),
     fields: file.fields.map((f) => ({
       id: fieldIds.get(f.id)!, pipe_id: pipeId, phase_id: f.phase_id ? ph(f.phase_id) : null, type: f.type, label: f.label,
-      description: f.description, required: f.required, options: f.options ?? [], show_on_card: f.show_on_card, position: f.position,
+      description: f.description, required: f.required, options: (f.options ?? []).map((o) => (f.type === 'currency' && o.startsWith('@') ? `@${fd(o.slice(1))}` : o)), show_on_card: f.show_on_card, position: f.position,
       conditions: (f.conditions ?? []).map((c) => ({ ...c, field_id: fd(c.field_id) })),
       translations: f.translations ?? {},
       per_person: !!f.per_person,
