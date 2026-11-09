@@ -130,7 +130,13 @@ const ptBR = {
     dateField: 'Campo de data', phases: 'Mostrar cards destas fases', horizon: 'Período',
     configHint: 'Datas que já passaram continuam aparecendo em vermelho enquanto o card estiver nessas fases.',
   },
-  profile: { menu: 'Conta', editName: 'Editar nome', name: 'Seu nome', nameHint: 'Aparece na saudação da página inicial.' },
+  profile: {
+    menu: 'Conta', title: 'Meu perfil', editName: 'Editar nome', name: 'Seu nome', nameHint: 'Aparece na saudação da página inicial.',
+    icon: 'Seu ícone', iconHint: 'Aparece no canto superior e na lista da equipe.', initials: 'Iniciais', color: 'Cor',
+    team: 'Equipe', teamHint: 'Pessoas com acesso a este espaço.', you: 'Você', lastLogin: 'Último login', lastActive: 'Ativo',
+    activeNow: 'Ativo agora', never: 'Nunca', teamError: 'Não foi possível carregar a equipe. Verifique se o SQL 0010 foi executado.',
+    addHint: 'Para dar acesso a alguém novo: crie o usuário no Supabase (Authentication → Users) e adicione-o em app_admins.',
+  },
   family: {
     choiceTitle: 'Para quem é a solicitação?', choiceHint: 'Escolha uma opção para começar.',
     onlyMe: 'Só para mim', onlyMeHint: 'Um formulário, uma pessoa',
@@ -287,7 +293,13 @@ const es: Dict = {
     dateField: 'Campo de fecha', phases: 'Mostrar tarjetas de estas fases', horizon: 'Periodo',
     configHint: 'Las fechas pasadas siguen apareciendo en rojo mientras la tarjeta esté en esas fases.',
   },
-  profile: { menu: 'Cuenta', editName: 'Editar nombre', name: 'Tu nombre', nameHint: 'Aparece en el saludo de la página de inicio.' },
+  profile: {
+    menu: 'Cuenta', title: 'Mi perfil', editName: 'Editar nombre', name: 'Tu nombre', nameHint: 'Aparece en el saludo de la página de inicio.',
+    icon: 'Tu icono', iconHint: 'Aparece en la esquina superior y en la lista del equipo.', initials: 'Iniciales', color: 'Color',
+    team: 'Equipo', teamHint: 'Personas con acceso a este espacio.', you: 'Tú', lastLogin: 'Último inicio de sesión', lastActive: 'Activo',
+    activeNow: 'Activo ahora', never: 'Nunca', teamError: 'No se pudo cargar el equipo. Comprueba que se ejecutó el SQL 0010.',
+    addHint: 'Para dar acceso a alguien nuevo: crea el usuario en Supabase (Authentication → Users) y añádelo en app_admins.',
+  },
   family: {
     choiceTitle: '¿Para quién es la solicitud?', choiceHint: 'Elige una opción para empezar.',
     onlyMe: 'Solo para mí', onlyMeHint: 'Un formulario, una persona',

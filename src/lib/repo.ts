@@ -1,6 +1,6 @@
 import { cleanValues } from './sanitize'
 import type {
-  AttachmentValue, Board, Card, CardEvent, FamilyMemberInput, Field, PdfTemplate, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef,
+  AttachmentValue, Board, Card, CardEvent, FamilyMemberInput, Field, PdfTemplate, FieldInput, FieldValue, FormSettings, Phase, PhaseInput, Pipe, PipeSummary, PublicFormDef, TeamMember,
 } from './types'
 import { supabase, isSupabaseConfigured } from './supabase'
 import { demoRepo } from './demoRepo'
@@ -10,6 +10,7 @@ import type { RestoreRows } from './projectFile'
 /** Everything the UI needs from storage. Two implementations: Supabase and an in-browser demo. */
 export interface Repo {
   listPipes(): Promise<PipeSummary[]>
+  listTeam(): Promise<TeamMember[]>
   createPipe(input: Pick<Pipe, 'name' | 'icon' | 'color'>): Promise<Pipe>
   updatePipe(id: string, patch: Partial<Pick<Pipe, 'name' | 'icon' | 'color'>>): Promise<void>
   deletePipe(id: string): Promise<void>
@@ -71,6 +72,9 @@ function check<T>(res: { data: T; error: unknown }): T {
 }
 
 const supabaseRepo: Repo = {
+  async listTeam() {
+    return check(await supabase!.rpc('list_team')) as TeamMember[]
+  },
   async listPipes() {
     const pipes = check(await supabase!.from('pipes').select('*, cards(count)').is('cards.family_of', null).order('created_at')) as Array<
       Pipe & { cards: { count: number }[] }

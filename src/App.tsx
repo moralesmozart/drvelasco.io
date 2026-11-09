@@ -14,6 +14,7 @@ const Reports = lazy(() => import('./pages/Reports'))
 const Importer = lazy(() => import('./pages/Importer'))
 import Home from './pages/Home'
 import Login from './pages/Login'
+import Profile from './pages/Profile'
 import PublicForm from './pages/PublicForm'
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 10_000, refetchOnWindowFocus: true } } })
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/f/:slug" element={<PublicForm />} />
             <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
+            <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
             <Route path="/pipe/:pipeId" element={<RequireAuth><Board /></RequireAuth>} />
             <Route path="/pipe/:pipeId/form" element={<RequireAuth><FormBuilder /></RequireAuth>} />
             <Route path="/pipe/:pipeId/reports" element={<RequireAuth><Suspense fallback={<div className="grid min-h-screen place-items-center"><Spinner /></div>}><Reports /></Suspense></RequireAuth>} />

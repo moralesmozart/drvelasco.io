@@ -180,6 +180,16 @@ export function resetDemo() {
 }
 
 export const demoRepo: Repo = {
+  async listTeam() {
+    let name = 'Demo'
+    let avatar = null
+    try { name = localStorage.getItem('demo-name') || 'Demo'; avatar = JSON.parse(localStorage.getItem('demo-avatar') || 'null') } catch { /* ignore */ }
+    const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString()
+    return delay([
+      { user_id: 'demo', email: 'demo@example.com', name, avatar, last_sign_in_at: ago(60 * 3), last_seen_at: ago(0), created_at: ago(60 * 24 * 30) },
+      { user_id: 'demo-2', email: 'equipe@example.com', name: 'Assistente', avatar: { icon: 'heart-pulse', color: 'violet' }, last_sign_in_at: ago(60 * 26), last_seen_at: ago(60 * 25), created_at: ago(60 * 24 * 12) },
+    ])
+  },
   async listPipes() {
     return delay(db.pipes.map((p) => ({ ...p, card_count: db.cards.filter((c) => c.pipe_id === p.id && !c.family_of).length })))
   },

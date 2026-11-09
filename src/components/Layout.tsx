@@ -1,14 +1,14 @@
-import { Bell, BellRing, Briefcase, ClipboardList, UserPen, FileCheck, HeartPulse, Inbox, LogOut, Plane, RotateCcw, Stethoscope, Users, type LucideIcon } from 'lucide-react'
+import { Bell, BellRing, Briefcase, ClipboardList, UserRound, FileCheck, HeartPulse, Inbox, LogOut, Plane, RotateCcw, Stethoscope, Users, type LucideIcon } from 'lucide-react'
 import clsx from 'clsx'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { Avatar } from './Avatar'
 import { useAuth } from '../lib/auth'
 import { LANGS } from '../lib/i18n'
 import { isDemo } from '../lib/repo'
 import { resetDemo } from '../lib/demoRepo'
-import { Button, IconButton, Input, Label, Menu, Modal } from './ui'
-import { toast } from 'sonner'
+import { IconButton, Menu } from './ui'
 import { useState } from 'react'
 
 const ICONS: Record<string, LucideIcon> = {
@@ -60,7 +60,7 @@ export function LangSwitch() {
 export function Header({ left }: { left?: ReactNode }) {
   const { t } = useTranslation()
   const { user, signOut } = useAuth()
-  const [editingName, setEditingName] = useState(false)
+  const navigate = useNavigate()
   return (
     <>
       {isDemo && (
@@ -80,16 +80,15 @@ export function Header({ left }: { left?: ReactNode }) {
             <>
               <Menu
                 trigger={(open) => (
-                  <button onClick={open} title={user.email} aria-label={t('profile.menu')} className="grid h-9 w-9 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-800 ring-brand-300 transition hover:ring-2">
-                    {initials(user.name)}
+                  <button onClick={open} title={user.email} aria-label={t('profile.menu')} className="rounded-full ring-brand-300 transition hover:ring-2">
+                    <Avatar name={user.name} avatar={user.avatar} />
                   </button>
                 )}
                 items={[
-                  { label: t('profile.editName'), icon: <UserPen className="h-4 w-4" />, onClick: () => setEditingName(true) },
+                  { label: t('profile.title'), icon: <UserRound className="h-4 w-4" />, onClick: () => navigate('/profile') },
                   { label: t('auth.logout'), icon: <LogOut className="h-4 w-4" />, onClick: () => { void signOut() } },
                 ]}
               />
-              <NameDialog open={editingName} onClose={() => setEditingName(false)} />
             </>
           )}
         </div>
@@ -111,39 +110,5 @@ function NotifyBell() {
     >
       {perm === 'granted' ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
     </IconButton>
-  )
-}
-
-export function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?'
-}
-
-export function NameDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useTranslation()
-  const { user, updateName } = useAuth()
-  const [name, setName] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [wasOpen, setWasOpen] = useState(false)
-  if (open !== wasOpen) { setWasOpen(open); if (open) setName(user?.name ?? '') }
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={t('profile.editName')}
-      footer={<><Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button><Button form="name-form" type="submit" loading={busy} disabled={!name.trim()}>{t('common.save')}</Button></>}
-    >
-      <form
-        id="name-form"
-        onSubmit={async (e) => {
-          e.preventDefault()
-          setBusy(true)
-          try { await updateName(name); toast.success(t('common.saved')); onClose() } catch { toast.error(t('common.error')) } finally { setBusy(false) }
-        }}
-      >
-        <Label htmlFor="profile-name" hint={t('profile.nameHint')}>{t('profile.name')}</Label>
-        <Input id="profile-name" autoFocus maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
-      </form>
-    </Modal>
   )
 }

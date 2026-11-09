@@ -138,3 +138,13 @@ export interface PdfTemplate {
   page: PdfPageSettings
   updated_at: string
 }
+
+export interface TeamMember {
+  user_id: string
+  email: string
+  name: string | null
+  avatar: { icon?: string; color?: string } | null
+  last_sign_in_at: string | null
+  last_seen_at: string | null
+  created_at: string
+}

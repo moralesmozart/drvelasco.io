@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase, isSupabaseConfigured } from './supabase'
+import type { AvatarChoice } from '../components/Avatar'
 
 interface AuthUser {
   id: string
   email: string
   name: string
+  avatar?: AvatarChoice
 }
 
 interface AuthState {
@@ -13,14 +15,19 @@ interface AuthState {
   signIn(email: string, password: string): Promise<'ok' | 'invalid' | 'not_admin'>
   enterDemo(): void
   updateName(name: string): Promise<void>
+  updateAvatar(avatar: AvatarChoice): Promise<void>
   signOut(): Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
 const demoUser = (): AuthUser => {
   let name = 'Demo'
-  try { name = localStorage.getItem('demo-name') || 'Demo' } catch { /* ignore */ }
-  return { id: 'demo', email: 'demo@example.com', name }
+  let avatar: AvatarChoice | undefined
+  try {
+    name = localStorage.getItem('demo-name') || 'Demo'
+    avatar = JSON.parse(localStorage.getItem('demo-avatar') || 'null') ?? undefined
+  } catch { /* ignore */ }
+  return { id: 'demo', email: 'demo@example.com', name, avatar }
 }
 
 function nameFromEmail(email: string) {
@@ -43,10 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return
     }
-    const apply = async (session: { user: { id: string; email?: string; user_metadata?: { name?: string } } } | null) => {
+    const apply = async (session: { user: { id: string; email?: string; user_metadata?: { name?: string; avatar?: AvatarChoice } } } | null) => {
       if (session && (await checkAdmin(session.user.id))) {
         const email = session.user.email ?? ''
-        setUser({ id: session.user.id, email, name: session.user.user_metadata?.name ?? nameFromEmail(email) })
+        setUser({ id: session.user.id, email, name: session.user.user_metadata?.name ?? nameFromEmail(email), avatar: session.user.user_metadata?.avatar })
       } else {
         setUser(null)
       }
@@ -56,6 +63,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase!.auth.onAuthStateChange((_e, session) => { void apply(session) })
     return () => sub.subscription.unsubscribe()
   }, [])
+
+  // "Last activity" for the team list: ping while the app is open (the server keeps at most one write per 2 min)
+  const signedIn = !!user && isSupabaseConfigured
+  useEffect(() => {
+    if (!signedIn) return
+    const ping = () => { if (document.visibilityState === 'visible') void supabase!.rpc('touch_presence') }
+    ping()
+    const id = setInterval(ping, 3 * 60_000)
+    document.addEventListener('visibilitychange', ping)
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', ping) }
+  }, [signedIn])
 
   const value: AuthState = {
     user,
@@ -84,6 +102,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try { localStorage.setItem('demo-name', clean) } catch { /* ignore */ }
       }
       setUser({ ...user, name: clean })
+    },
+    async updateAvatar(avatar) {
+      if (!user) return
+      if (supabase) {
+        const { error } = await supabase.auth.updateUser({ data: { avatar } })
+        if (error) throw error
+      } else {
+        try { localStorage.setItem('demo-avatar', JSON.stringify(avatar)) } catch { /* ignore */ }
+      }
+      setUser({ ...user, avatar })
     },
     async signOut() {
       if (supabase) await supabase.auth.signOut()
