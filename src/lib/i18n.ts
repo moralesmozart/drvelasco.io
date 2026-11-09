@@ -56,7 +56,7 @@ const ptBR = {
     step1: 'Preencha o formulário de pré-consulta', step2: 'A equipe médica avalia suas informações', step3: 'Entramos em contato com você',
     confidential: 'Suas informações de saúde são confidenciais.',
   },
-  builder: {
+  builder: { currency: 'Moeda',
     title: 'Formulários', startForm: 'Formulário inicial', startFormHint: 'Público: qualquer pessoa com o link cria um card.',
     phaseFormHint: 'Campos preenchidos pela equipe nesta fase.',
     addField: 'Adicionar campo', fieldTypes: 'Tipos de campo', empty: 'Nenhum campo ainda. Escolha um tipo à esquerda.',
@@ -219,7 +219,7 @@ const es: Dict = {
     step1: 'Rellena el formulario de preconsulta', step2: 'El equipo médico evalúa tu información', step3: 'Nos ponemos en contacto contigo',
     confidential: 'Tu información de salud es confidencial.',
   },
-  builder: {
+  builder: { currency: 'Moneda',
     title: 'Formularios', startForm: 'Formulario inicial', startFormHint: 'Público: cualquiera con el enlace crea una tarjeta.',
     phaseFormHint: 'Campos que rellena el equipo en esta fase.',
     addField: 'Añadir campo', fieldTypes: 'Tipos de campo', empty: 'Aún no hay campos. Elige un tipo a la izquierda.',

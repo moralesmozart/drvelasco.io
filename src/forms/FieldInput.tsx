@@ -1,3 +1,4 @@
+import { currencyOf, currencySymbol } from '../lib/format'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ChevronDown, Copy, ExternalLink, FileText, Image as ImageIcon, Loader2, MessageCircle, Paperclip, X } from 'lucide-react'
 import clsx from 'clsx'
@@ -56,7 +57,7 @@ export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile
       case 'currency':
         return (
           <div className="relative">
-            {field.type === 'currency' && <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">€</span>}
+            {field.type === 'currency' && <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">{currencySymbol(currencyOf(field), i18n.language)}</span>}
             <input
               {...common}
               type="number"
@@ -64,7 +65,7 @@ export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile
               step="any"
               value={str}
               onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-              className={clsx(inputCls, 'h-12', field.type === 'currency' && 'pl-8', error ? errCls : okCls)}
+              className={clsx(inputCls, 'h-12', field.type === 'currency' && (currencySymbol(currencyOf(field), i18n.language).length > 1 ? 'pl-11' : 'pl-8'), error ? errCls : okCls)}
             />
           </div>
         )

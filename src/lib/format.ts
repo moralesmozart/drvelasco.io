@@ -30,13 +30,27 @@ export function formatValue(field: Field, value: FieldValue, lang: string): stri
     return value.map((v) => (typeof v === 'string' ? opt(v) : v && typeof v === 'object' && 'name' in v ? String(v.name) : '')).filter(Boolean).join(', ') || '—'
   }
   if (typeof value === 'object') return '—'
-  if (typeof value === 'string' && field.options.length) return opt(value)
+  if (typeof value === 'string' && field.options.length && field.type !== 'currency') return opt(value)
   if (field.type === 'date' && typeof value === 'string') {
     const d = new Date(value + (value.length === 10 ? 'T00:00:00' : ''))
     return isNaN(d.getTime()) ? value : d.toLocaleDateString(lang)
   }
   if (field.type === 'currency' && typeof value === 'number') {
-    return new Intl.NumberFormat(lang, { style: 'currency', currency: 'EUR' }).format(value)
+    return new Intl.NumberFormat(lang, { style: 'currency', currency: currencyOf(field) }).format(value)
   }
   return String(value)
+}
+
+export const CURRENCIES = ['EUR', 'BRL', 'USD'] as const
+
+/** A currency field keeps its ISO code in options[0] (default EUR). */
+export function currencyOf(field: { type: string; options: string[] }) {
+  const c = field.type === 'currency' ? field.options[0] : undefined
+  return c && /^[A-Z]{3}$/.test(c) ? c : 'EUR'
+}
+
+export function currencySymbol(code: string, lang = 'pt-BR') {
+  try {
+    return new Intl.NumberFormat(lang, { style: 'currency', currency: code }).formatToParts(0).find((p) => p.type === 'currency')?.value ?? code
+  } catch { return code }
 }

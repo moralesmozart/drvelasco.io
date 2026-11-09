@@ -1,3 +1,4 @@
+import { CURRENCIES, currencyOf, currencySymbol } from '../lib/format'
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -349,6 +350,25 @@ function FieldEditor({ field, candidates, onChange }: { field: Field; candidates
         </div>
       )}
 
+      {field.type === 'currency' && (
+        <div>
+          <Label>{t('builder.currency')}</Label>
+          <div className="flex gap-2">
+            {CURRENCIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={currencyOf(field) === c}
+                onClick={() => onChange({ options: [c] })}
+                className={clsx('rounded-xl border-2 px-4 py-2 text-sm font-semibold transition', currencyOf(field) === c ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600 hover:border-slate-300')}
+              >
+                {currencySymbol(c)} · {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {meta.hasOptions && (
         <div>
           <Label>{t('builder.options')}</Label>
@@ -537,7 +557,7 @@ function TranslationBox({ field, onChange }: { field: Field; onChange: (p: Parti
           <Label htmlFor="fe-es-desc">{t('builder.description')} (ES)</Label>
           <Textarea id="fe-es-desc" rows={2} value={es.description ?? ''} placeholder={field.description ?? ''} onChange={(e) => set({ description: e.target.value || null })} />
         </div>
-        {field.options.length > 0 && (
+        {field.options.length > 0 && field.type !== 'currency' && (
           <div>
             <Label>{t('builder.options')} (ES)</Label>
             <div className="space-y-1.5">

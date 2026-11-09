@@ -1,3 +1,4 @@
+import { currencyOf } from '../lib/format'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { CheckCircle2, ChevronLeft, Clock, Inbox, Sparkles, Table2, BarChart3 } from 'lucide-react'
@@ -129,7 +130,7 @@ function ReportBody({ board: fullBoard, events: allEvents, period, lang }: { boa
     const sum = money ? matching.reduce((acc, c) => acc + (Number(c.values[money.id]) || 0), 0) : 0
     return { label: fieldText(choice, lang).option(o), count: matching.length, sum }
   }) : []
-  const moneyFmt = (n: number) => money?.type === 'currency' ? new Intl.NumberFormat(lang, { style: 'currency', currency: 'EUR' }).format(n) : new Intl.NumberFormat(lang).format(n)
+  const moneyFmt = (n: number) => money?.type === 'currency' ? new Intl.NumberFormat(lang, { style: 'currency', currency: currencyOf(money) }).format(n) : new Intl.NumberFormat(lang).format(n)
 
   return (
     <div className="space-y-6">
