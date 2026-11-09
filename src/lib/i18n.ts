@@ -2,7 +2,7 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
 const ptBR = {
-  app: { name: 'drvelasco', demo: 'Modo demo · dados ficam só neste navegador', resetDemo: 'Restaurar demo' },
+  app: { updateTitle: 'Nova versão disponível', updateHint: 'Atualize para ver as últimas melhorias.', updateNow: 'Atualizar', name: 'drvelasco', demo: 'Modo demo · dados ficam só neste navegador', resetDemo: 'Restaurar demo' },
   common: {
     cancel: 'Cancelar', save: 'Salvar', delete: 'Excluir', create: 'Criar', edit: 'Editar', close: 'Fechar',
     loading: 'Carregando…', error: 'Algo deu errado', back: 'Voltar', search: 'Procurar cards',
@@ -165,7 +165,7 @@ const ptBR = {
 type Dict = typeof ptBR
 
 const es: Dict = {
-  app: { name: 'drvelasco', demo: 'Modo demo · los datos quedan solo en este navegador', resetDemo: 'Restaurar demo' },
+  app: { updateTitle: 'Nueva versión disponible', updateHint: 'Actualiza para ver las últimas mejoras.', updateNow: 'Actualizar', name: 'drvelasco', demo: 'Modo demo · los datos quedan solo en este navegador', resetDemo: 'Restaurar demo' },
   common: {
     cancel: 'Cancelar', save: 'Guardar', delete: 'Eliminar', create: 'Crear', edit: 'Editar', close: 'Cerrar',
     loading: 'Cargando…', error: 'Algo salió mal', back: 'Volver', search: 'Buscar tarjetas',

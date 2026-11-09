@@ -42,8 +42,21 @@ function sharePreview(env: Record<string, string>): Plugin {
   }
 }
 
+/** Writes version.json next to the site so open tabs can notice a newer deploy. */
+const BUILD_ID = Date.now().toString(36)
+function versionFile(): Plugin {
+  return {
+    name: 'version-file',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ v: BUILD_ID }) })
+    },
+  }
+}
+
 // base './' keeps asset paths relative, so the build works on GitHub Pages under /<repo>/
 export default defineConfig(({ mode }) => ({
   base: './',
-  plugins: [react(), sharePreview(loadEnv(mode, process.cwd(), 'VITE_'))],
+  plugins: [react(), sharePreview(loadEnv(mode, process.cwd(), 'VITE_')), versionFile()],
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
 }))
