@@ -1,4 +1,4 @@
-import { currencyOf, currencySymbol } from '../lib/format'
+import { CURRENCIES, currencyOf, currencySymbol } from '../lib/format'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ChevronDown, Copy, ExternalLink, FileText, Image as ImageIcon, Loader2, MessageCircle, Paperclip, X } from 'lucide-react'
 import clsx from 'clsx'
@@ -30,9 +30,11 @@ interface Props {
   idPrefix?: string
   /** Other answers on the same card (a money field's currency may depend on them) */
   values?: Record<string, FieldValue>
+  /** Money fields: lets the person pick the currency for this card */
+  onCurrencyChange?: (code: string) => void
 }
 
-export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile, showWhatsApp, idPrefix, values }: Props) {
+export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile, showWhatsApp, idPrefix, values, onCurrencyChange }: Props) {
   const { t, i18n } = useTranslation()
   const id = idPrefix ? `f-${idPrefix}-${field.id}` : `f-${field.id}`
   const txt = fieldText(field, i18n.language)
@@ -59,7 +61,18 @@ export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile
       case 'currency':
         return (
           <div className="relative">
-            {field.type === 'currency' && <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">{currencySymbol(currencyOf(field, values), i18n.language)}</span>}
+            {field.type === 'currency' && (onCurrencyChange ? (
+              <select
+                aria-label={t('builder.currency')}
+                value={currencyOf(field, values)}
+                onChange={(e) => onCurrencyChange(e.target.value)}
+                className="absolute inset-y-1 left-1 z-10 w-[4.75rem] cursor-pointer rounded-lg border-0 bg-slate-100 pl-2.5 pr-6 text-sm font-semibold text-slate-700 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-200"
+              >
+                {CURRENCIES.map((c) => <option key={c} value={c}>{currencySymbol(c, i18n.language)}</option>)}
+              </select>
+            ) : (
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">{currencySymbol(currencyOf(field, values), i18n.language)}</span>
+            ))}
             <input
               {...common}
               type="number"
@@ -67,7 +80,7 @@ export function FieldInput({ field, value, onChange, error, onUpload, onOpenFile
               step="any"
               value={str}
               onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-              className={clsx(inputCls, 'h-12', field.type === 'currency' && (currencySymbol(currencyOf(field, values), i18n.language).length > 1 ? 'pl-11' : 'pl-8'), error ? errCls : okCls)}
+              className={clsx(inputCls, 'h-12', field.type === 'currency' && (onCurrencyChange ? 'pl-[5.5rem]' : currencySymbol(currencyOf(field, values), i18n.language).length > 1 ? 'pl-11' : 'pl-8'), error ? errCls : okCls)}
             />
           </div>
         )

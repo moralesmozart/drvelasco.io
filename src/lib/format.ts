@@ -67,8 +67,13 @@ export function ruleToOptions(r: CurrencyRule) {
   return [r.base, ...(r.by ? [`@${r.by}`, ...Object.entries(r.map).map(([k, v]) => `${k}=${v}`)] : [])]
 }
 
-/** The currency for this field on a given card (its values decide when there is a rule). */
-export function currencyOf(field: { type: string; options: string[] }, values?: Record<string, unknown>) {
+/** Key where a card stores a currency picked by hand for a money field */
+export const curKey = (fieldId: string) => `${fieldId}:cur`
+
+/** The currency for this field on a given card: picked by hand > rule from another answer > default. */
+export function currencyOf(field: { id?: string; type: string; options: string[] }, values?: Record<string, unknown>) {
+  const picked = field.id && values ? values[curKey(field.id)] : undefined
+  if (typeof picked === 'string' && ISO.test(picked)) return picked
   const r = currencyRule(field)
   if (r.by && values) {
     const v = values[r.by]

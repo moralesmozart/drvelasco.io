@@ -11,7 +11,7 @@ import { Button, ConfirmDialog, IconButton, Input, Label, Modal } from '../compo
 import { ageFrom, relationLabel, RELATIONS, withSharedValues } from '../lib/family'
 import { FieldInput } from '../forms/FieldInput'
 import { isVisible } from '../forms/logic'
-import { formatValue, timeSince } from '../lib/format'
+import { curKey, formatValue, timeSince } from '../lib/format'
 import { repo } from '../lib/repo'
 import { fieldText, phaseLabel } from '../lib/localize'
 import type { AttachmentValue, Board, Card, CardEvent, Field, FieldValue, PdfTemplate, Phase } from '../lib/types'
@@ -134,6 +134,7 @@ export function CardDrawer({ board, card, onClose, onMoved, onDeleted, onOpenCar
           onUpload={(file) => repo.uploadCardFile(card.id, file)}
           onOpenFile={openFile}
           values={values}
+          onCurrencyChange={f.type === 'currency' ? (c) => setValue(curKey(f.id), c) : undefined}
           showWhatsApp
         />
       </motion.div>
@@ -406,12 +407,18 @@ function Timeline({ events, loading, fieldName, phaseName, lang, values }: {
         } else if (e.type === 'title_edited') {
           text = <>{t('card.evTitle')}: <b>{String(p.new ?? '')}</b></>
         } else {
-          const f = fieldName[String(p.field_id)]
+          const key = String(p.field_id)
+          if (key.endsWith(':cur')) {
+            const mf = fieldName[key.slice(0, -4)]
+            text = <><b>{mf ? fieldText(mf, lang).label : t('card.removedField')}</b> · {t('builder.currency')}: <span className="text-slate-400 line-through">{String(p.old ?? '—')}</span> → <span>{String(p.new ?? '—')}</span></>
+          } else {
+          const f = fieldName[key]
           text = (
             <>
               <b>{f ? fieldText(f, lang).label : t('card.removedField')}</b>: <span className="text-slate-400 line-through">{show(f, p.old)}</span> → <span>{show(f, p.new)}</span>
             </>
           )
+          }
         }
         return (
           <li key={String(e.id)} className="relative text-sm text-slate-700">
